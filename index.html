@@ -258,13 +258,12 @@
     <button class="refresh-btn" onclick="loadTasks()" title="Refresh tasks">↻</button>
 
     <script>
-        let sheetId = '';
-        let tasks = [];
+        let sheetId = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
+        let tasks = [AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A];
 
-        function connectSheet() {
-            const url = document.getElementById('sheetUrl').value;
-            const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
-            
+function connectSheet() {
+    if (!apiKey) apiKey = document.getElementById('apiKey').value.trim();
+    if (!sheetId) sheetId = document.getElementById('sheetId').value.trim();
             if (match) {
                 sheetId = match[1];
                 document.getElementById('setupSection').style.display = 'none';
@@ -357,6 +356,13 @@
         setInterval(() => {
             if (sheetId) loadTasks();
         }, 30000);
+        // Auto-connect if credentials are preset
+if (apiKey && sheetId) {
+    document.getElementById('setupSection').style.display = 'none';
+    document.getElementById('stats').style.display = 'flex';
+    document.getElementById('filterSection').style.display = 'flex';
+    loadTasks();
+}
     </script>
 </body>
 </html>
