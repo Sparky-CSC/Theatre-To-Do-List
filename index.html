@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive To-Do List</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .setup-section {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .setup-section h2 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .instructions {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #1976d2;
+        }
+
+        .instructions ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+
+        .todo-list {
+            padding: 30px;
+        }
+
+        .todo-item {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s;
+        }
+
+        .todo-item:hover {
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transform: translateX(5px);
+        }
+
+        .todo-item.completed {
+            background: #e8f5e9;
+            border-left-color: #4caf50;
+            opacity: 0.8;
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+            accent-color: #667eea;
+        }
+
+        .todo-content {
+            flex: 1;
+        }
+
+        .todo-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .todo-item.completed .todo-title {
+            text-decoration: line-through;
+            color: #888;
+        }
+
+        .todo-description {
+            color: #666;
+            font-size: 0.9em;
+        }
+
+        .initials-input {
+            width: 80px;
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            text-align: center;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .initials-display {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px;
+        }
+
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+            transition: transform 0.3s;
+        }
+
+        .refresh-btn:hover {
+            transform: rotate(180deg) scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Interactive To-Do List</h1>
+            <p>Connected to Google Sheets</p>
+        </div>
+
+        <div class="setup-section" id="setupSection">
+            <h2>Setup Your Google Sheet Connection</h2>
+            <div class="input-group">
+                <label for="sheetUrl">Google Sheet URL:</label>
+                <input type="text" id="sheetUrl" placeholder="Paste your Google Sheet URL here">
+            </div>
+            <button class="btn" onclick="connectSheet()">Connect Sheet</button>
+            
+            <div class="instructions">
+                <strong>📝 Setup Instructions:</strong>
+                <ol>
+                    <li>Create a Google Sheet with columns: <code>Task</code>, <code>Description</code>, <code>Completed</code>, <code>Initials</code></li>
+                    <li>Go to File → Share → Publish to web</li>
+                    <li>Select "Entire Document" and "Web page", then click Publish</li>
+                    <li>Copy the URL and paste it above</li>
+                    <li>Or use this format: docs.google.com/spreadsheets/d/[SHEET_ID]/edit</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="todo-list" id="todoList">
+            <div class="loading">Connect your Google Sheet to get started!</div>
+        </div>
+    </div>
+
+    <button class="refresh-btn" onclick="loadTasks()" title="Refresh tasks">↻</button>
+
+    <script>
+        let sheetId = '';
+        let tasks = [];
+
+        function connectSheet() {
+            const url = document.getElementById('sheetUrl').value;
+            const match = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+            
+            if (match) {
+                sheetId = match[1];
+                document.getElementById('setupSection').style.display = 'none';
+                loadTasks();
+            } else {
+                alert('Invalid Google Sheet URL. Please check the URL and try again.');
+            }
+        }
+
+        async function loadTasks() {
+            if (!sheetId) return;
+
+            const todoList = document.getElementById('todoList');
+            todoList.innerHTML = '<div class="loading">Loading tasks...</div>';
+
+            try {
+                const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
+                const response = await fetch(url);
+                const text = await response.text();
+                const json = JSON.parse(text.substr(47).slice(0, -2));
+
+                tasks = json.table.rows.map((row, index) => ({
+                    id: index,
+                    task: row.c[0]?.v || '',
+                    description: row.c[1]?.v || '',
+                    completed: row.c[2]?.v === 'TRUE' || row.c[2]?.v === true,
+                    initials: row.c[3]?.v || ''
+                }));
+
+                renderTasks();
+            } catch (error) {
+                todoList.innerHTML = '<div class="error">Error loading tasks. Make sure your sheet is published to the web and the URL is correct.</div>';
+            }
+        }
+
+        function renderTasks() {
+            const todoList = document.getElementById('todoList');
+            
+            if (tasks.length === 0) {
+                todoList.innerHTML = '<div class="loading">No tasks found. Add some tasks to your Google Sheet!</div>';
+                return;
+            }
+
+            todoList.innerHTML = tasks.map(task => `
+                <div class="todo-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+                    <input type="checkbox" class="checkbox" 
+                           ${task.completed ? 'checked' : ''} 
+                           onchange="toggleTask(${task.id})"
+                           ${task.completed ? 'disabled' : ''}>
+                    <div class="todo-content">
+                        <div class="todo-title">${task.task}</div>
+                        ${task.description ? `<div class="todo-description">${task.description}</div>` : ''}
+                    </div>
+                    ${task.completed ? 
+                        `<div class="initials-display">${task.initials}</div>` :
+                        `<input type="text" class="initials-input" 
+                                placeholder="Initials" 
+                                maxlength="5"
+                                id="initials-${task.id}">`
+                    }
+                </div>
+            `).join('');
+        }
+
+        function toggleTask(taskId) {
+            const initialsInput = document.getElementById(`initials-${taskId}`);
+            const initials = initialsInput?.value.trim().toUpperCase();
+
+            if (!initials) {
+                alert('Please enter your initials before marking the task as complete!');
+                const checkbox = document.querySelector(`[data-id="${taskId}"] .checkbox`);
+                checkbox.checked = false;
+                return;
+            }
+
+            tasks[taskId].completed = true;
+            tasks[taskId].initials = initials;
+            renderTasks();
+
+            // Show success message
+            const item = document.querySelector(`[data-id="${taskId}"]`);
+            item.style.background = '#4caf50';
+            item.style.color = 'white';
+            setTimeout(() => {
+                renderTasks();
+            }, 500);
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            if (sheetId) loadTasks();
+        }, 30000);
+    </script>
+</body>
+</html>
