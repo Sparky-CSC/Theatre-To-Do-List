@@ -19,7 +19,7 @@
         }
 
         .container {
-            max-width: 800px;
+            max-width: 1000px;
             margin: 0 auto;
             background: white;
             border-radius: 20px;
@@ -39,78 +39,32 @@
             margin-bottom: 10px;
         }
 
-        .setup-section {
-            padding: 30px;
+        .filter-section {
+            padding: 20px 30px;
             background: #f8f9fa;
-            border-bottom: 2px solid #e9ecef;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
         }
 
-        .setup-section h2 {
-            color: #333;
-            margin-bottom: 15px;
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .input-group {
-            margin-bottom: 15px;
-        }
-
-        .input-group label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
+        .filter-group label {
             font-weight: 600;
+            color: #555;
         }
 
-        .input-group input {
-            width: 100%;
-            padding: 12px;
+        .filter-group select {
+            padding: 8px 12px;
             border: 2px solid #ddd;
-            border-radius: 8px;
-            font-size: 1em;
-            transition: border-color 0.3s;
-        }
-
-        .input-group input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 8px;
-            font-size: 1em;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn:active {
-            transform: translateY(0);
-        }
-
-        .instructions {
-            background: #e3f2fd;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 15px;
+            border-radius: 6px;
             font-size: 0.9em;
-            color: #1976d2;
-        }
-
-        .instructions ol {
-            margin-left: 20px;
-            margin-top: 10px;
-        }
-
-        .instructions li {
-            margin-bottom: 5px;
         }
 
         .todo-list {
@@ -140,22 +94,67 @@
             opacity: 0.8;
         }
 
+        .todo-item.priority-high {
+            border-left-color: #f44336;
+            background: #ffebee;
+        }
+
+        .todo-item.priority-medium {
+            border-left-color: #ff9800;
+            background: #fff3e0;
+        }
+
+        .todo-item.priority-low {
+            border-left-color: #2196f3;
+            background: #e3f2fd;
+        }
+
         .checkbox {
             width: 24px;
             height: 24px;
             cursor: pointer;
             accent-color: #667eea;
+            flex-shrink: 0;
         }
 
         .todo-content {
             flex: 1;
         }
 
+        .todo-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
         .todo-title {
             font-size: 1.2em;
             font-weight: 600;
             color: #333;
-            margin-bottom: 5px;
+        }
+
+        .priority-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75em;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .priority-high {
+            background: #f44336;
+            color: white;
+        }
+
+        .priority-medium {
+            background: #ff9800;
+            color: white;
+        }
+
+        .priority-low {
+            background: #2196f3;
+            color: white;
         }
 
         .todo-item.completed .todo-title {
@@ -166,16 +165,31 @@
         .todo-description {
             color: #666;
             font-size: 0.9em;
+            margin-bottom: 8px;
+        }
+
+        .todo-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85em;
+            color: #888;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .initials-input {
-            width: 80px;
+            width: 100px;
             padding: 8px;
             border: 2px solid #ddd;
             border-radius: 6px;
             text-align: center;
             text-transform: uppercase;
             font-weight: bold;
+            flex-shrink: 0;
         }
 
         .initials-display {
@@ -185,6 +199,7 @@
             border-radius: 20px;
             font-weight: bold;
             font-size: 0.9em;
+            flex-shrink: 0;
         }
 
         .loading {
@@ -221,106 +236,158 @@
         .refresh-btn:hover {
             transform: rotate(180deg) scale(1.1);
         }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            padding: 20px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .stat-item {
+            flex: 1;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>📋 Interactive To-Do List</h1>
+            <h1>📋 Team To-Do List</h1>
             <p>Connected to Google Sheets</p>
         </div>
 
-        <div class="setup-section" id="setupSection">
-            <h2>Setup Your Google Sheet Connection</h2>
-            <div class="input-group">
-                <label for="sheetUrl">Google Sheet URL:</label>
-                <input type="text" id="sheetUrl" placeholder="Paste your Google Sheet URL here">
+        <div class="stats" id="stats">
+            <div class="stat-item">
+                <div class="stat-number" id="totalTasks">0</div>
+                <div class="stat-label">Total Tasks</div>
             </div>
-            <button class="btn" onclick="connectSheet()">Connect Sheet</button>
-            
-            <div class="instructions">
-                <strong>📝 Setup Instructions:</strong>
-                <ol>
-                    <li>Create a Google Sheet with columns: <code>Task</code>, <code>Description</code>, <code>Completed</code>, <code>Initials</code></li>
-                    <li>Go to File → Share → Publish to web</li>
-                    <li>Select "Entire Document" and "Web page", then click Publish</li>
-                    <li>Copy the URL and paste it above</li>
-                    <li>Or use this format: docs.google.com/spreadsheets/d/[SHEET_ID]/edit</li>
-                </ol>
+            <div class="stat-item">
+                <div class="stat-number" id="completedTasks">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-number" id="pendingTasks">0</div>
+                <div class="stat-label">Pending</div>
+            </div>
+        </div>
+
+        <div class="filter-section" id="filterSection">
+            <div class="filter-group">
+                <label for="priorityFilter">Priority:</label>
+                <select id="priorityFilter" onchange="applyFilters()">
+                    <option value="all">All</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="statusFilter">Status:</label>
+                <select id="statusFilter" onchange="applyFilters()">
+                    <option value="all">All</option>
+                    <option value="pending">Pending</option>
+                    <option value="completed">Completed</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="creatorFilter">Created By:</label>
+                <select id="creatorFilter" onchange="applyFilters()">
+                    <option value="all">All</option>
+                </select>
             </div>
         </div>
 
         <div class="todo-list" id="todoList">
-            <div class="loading">Connect your Google Sheet to get started!</div>
+            <div class="loading">Loading tasks from Google Sheets...</div>
         </div>
     </div>
 
     <button class="refresh-btn" onclick="loadTasks()" title="Refresh tasks">↻</button>
 
     <script>
-        let sheetId = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
-        let tasks = [AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A];
+        // Pre-configured credentials
+        const apiKey = 'AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A';
+        const sheetId = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
+        
+        let tasks = [];
+        let allTasks = [];
 
-function connectSheet() {
-    if (!apiKey) apiKey = document.getElementById('apiKey').value.trim();
-    if (!sheetId) sheetId = document.getElementById('sheetId').value.trim();
-            if (match) {
-                sheetId = match[1];
-                document.getElementById('setupSection').style.display = 'none';
-                loadTasks();
-            } else {
-                alert('Invalid Google Sheet URL. Please check the URL and try again.');
-            }
+        function populateCreatorFilter() {
+            const creators = [...new Set(allTasks.map(t => t.createdBy).filter(Boolean))];
+            const select = document.getElementById('creatorFilter');
+            select.innerHTML = '<option value="all">All</option>' + 
+                creators.map(c => `<option value="${c}">${c}</option>`).join('');
         }
 
-        async function loadTasks() {
-            if (!sheetId) return;
+        function applyFilters() {
+            const priorityFilter = document.getElementById('priorityFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+            const creatorFilter = document.getElementById('creatorFilter').value;
 
-            const todoList = document.getElementById('todoList');
-            todoList.innerHTML = '<div class="loading">Loading tasks...</div>';
+            tasks = allTasks.filter(task => {
+                if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+                if (statusFilter === 'completed' && !task.completed) return false;
+                if (statusFilter === 'pending' && task.completed) return false;
+                if (creatorFilter !== 'all' && task.createdBy !== creatorFilter) return false;
+                return true;
+            });
 
-            try {
-                const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
-                const response = await fetch(url);
-                const text = await response.text();
-                const json = JSON.parse(text.substr(47).slice(0, -2));
+            renderTasks();
+        }
 
-                tasks = json.table.rows.map((row, index) => ({
-                    id: index,
-                    task: row.c[0]?.v || '',
-                    description: row.c[1]?.v || '',
-                    completed: row.c[2]?.v === 'TRUE' || row.c[2]?.v === true,
-                    initials: row.c[3]?.v || ''
-                }));
-
-                renderTasks();
-            } catch (error) {
-                todoList.innerHTML = '<div class="error">Error loading tasks. Make sure your sheet is published to the web and the URL is correct.</div>';
-            }
+        function updateStats() {
+            document.getElementById('totalTasks').textContent = allTasks.length;
+            document.getElementById('completedTasks').textContent = allTasks.filter(t => t.completed).length;
+            document.getElementById('pendingTasks').textContent = allTasks.filter(t => !t.completed).length;
         }
 
         function renderTasks() {
             const todoList = document.getElementById('todoList');
             
             if (tasks.length === 0) {
-                todoList.innerHTML = '<div class="loading">No tasks found. Add some tasks to your Google Sheet!</div>';
+                todoList.innerHTML = '<div class="loading">No tasks match your filters!</div>';
                 return;
             }
 
             todoList.innerHTML = tasks.map(task => `
-                <div class="todo-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+                <div class="todo-item ${task.completed ? 'completed' : ''} priority-${task.priority.toLowerCase()}" data-id="${task.id}">
                     <input type="checkbox" class="checkbox" 
                            ${task.completed ? 'checked' : ''} 
                            onchange="toggleTask(${task.id})"
                            ${task.completed ? 'disabled' : ''}>
                     <div class="todo-content">
-                        <div class="todo-title">${task.task}</div>
+                        <div class="todo-header">
+                            <div class="todo-title">${task.task}</div>
+                            <span class="priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                        </div>
                         ${task.description ? `<div class="todo-description">${task.description}</div>` : ''}
+                        <div class="todo-meta">
+                            <div class="meta-item">
+                                👤 Created by: <strong>${task.createdBy}</strong>
+                            </div>
+                            ${task.completed ? `
+                                <div class="meta-item">
+                                    ✅ Completed: <strong>${task.dateCompleted}</strong>
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                     ${task.completed ? 
-                        `<div class="initials-display">${task.initials}</div>` :
+                        `<div class="initials-display">${task.completedBy}</div>` :
                         `<input type="text" class="initials-input" 
-                                placeholder="Initials" 
+                                placeholder="Your Initials" 
                                 maxlength="5"
                                 id="initials-${task.id}">`
                     }
@@ -328,7 +395,42 @@ function connectSheet() {
             `).join('');
         }
 
-        function toggleTask(taskId) {
+        async function loadTasks() {
+            const todoList = document.getElementById('todoList');
+            todoList.innerHTML = '<div class="loading">Loading tasks...</div>';
+
+            try {
+                const range = 'Sheet1!A2:G';
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=${apiKey}`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                allTasks = (data.values || []).map((row, index) => ({
+                    id: index + 2,
+                    task: row[0] || '',
+                    description: row[1] || '',
+                    priority: row[2] || 'Medium',
+                    createdBy: row[3] || '',
+                    completed: row[4] === 'TRUE' || row[4] === true,
+                    completedBy: row[5] || '',
+                    dateCompleted: row[6] || ''
+                }));
+
+                tasks = [...allTasks];
+                renderTasks();
+                updateStats();
+                populateCreatorFilter();
+            } catch (error) {
+                todoList.innerHTML = `<div class="error">Error loading tasks: ${error.message}<br><br>Please make sure:<br>1. Your Google Sheet is shared publicly (Anyone with the link can view)<br>2. The sheet has the correct column structure<br>3. Google Sheets API is enabled</div>`;
+            }
+        }
+
+        async function toggleTask(taskId) {
             const initialsInput = document.getElementById(`initials-${taskId}`);
             const initials = initialsInput?.value.trim().toUpperCase();
 
@@ -339,30 +441,57 @@ function connectSheet() {
                 return;
             }
 
-            tasks[taskId].completed = true;
-            tasks[taskId].initials = initials;
-            renderTasks();
+            const today = new Date().toISOString().split('T')[0];
+            const taskIndex = allTasks.findIndex(t => t.id === taskId);
+            
+            if (taskIndex !== -1) {
+                allTasks[taskIndex].completed = true;
+                allTasks[taskIndex].completedBy = initials;
+                allTasks[taskIndex].dateCompleted = today;
+            }
 
-            // Show success message
+            // Update in sheet
+            await updateSheet(taskId, initials, today);
+
+            applyFilters();
+            updateStats();
+
+            // Show success animation
             const item = document.querySelector(`[data-id="${taskId}"]`);
             item.style.background = '#4caf50';
             item.style.color = 'white';
             setTimeout(() => {
-                renderTasks();
+                applyFilters();
             }, 500);
         }
 
+        async function updateSheet(taskId, initials, date) {
+            try {
+                const range = `Sheet1!E${taskId}:G${taskId}`;
+                const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueInputOption=RAW&key=${apiKey}`;
+                
+                await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        values: [['TRUE', initials, date]]
+                    })
+                });
+            } catch (error) {
+                console.error('Error updating sheet:', error);
+                alert('Task marked locally but could not update Google Sheet. Please check your internet connection.');
+            }
+        }
+
+        // Load tasks on page load
+        loadTasks();
+
         // Auto-refresh every 30 seconds
         setInterval(() => {
-            if (sheetId) loadTasks();
+            loadTasks();
         }, 30000);
-        // Auto-connect if credentials are preset
-if (apiKey && sheetId) {
-    document.getElementById('setupSection').style.display = 'none';
-    document.getElementById('stats').style.display = 'flex';
-    document.getElementById('filterSection').style.display = 'flex';
-    loadTasks();
-}
     </script>
 </body>
 </html>
