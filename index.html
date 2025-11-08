@@ -714,9 +714,9 @@
                 <div class="filter-group">
                     <label for="statusFilter">Status:</label>
                     <select id="statusFilter" onchange="applyFilters()">
-                        <option value="all">All</option>
+                        <option value="all">All Pending</option>
                         <option value="pending">Pending</option>
-                        <option value="completed">Completed</option>
+                        <option value="completed">Completed (in Sheet)</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -794,11 +794,19 @@
         const SHEET_ID = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
         const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 
+        // Admin email addresses
+        const ADMIN_EMAILS = [
+            'myork@culver.edu',
+            'hheaton@culver.edu',
+            'dlane@culver.edu'
+        ];
+
         let tokenClient;
         let accessToken = null;
         let tasks = [];
         let allTasks = [];
         let currentUser = null;
+        let isAdmin = false;
         let notificationEmails = [];
 
         // Initialize Google Identity Services
@@ -841,9 +849,17 @@
             .then(response => response.json())
             .then(data => {
                 currentUser = data;
-                document.getElementById('userName').textContent = data.name;
+                isAdmin = ADMIN_EMAILS.includes(data.email.toLowerCase());
+                
+                document.getElementById('userName').textContent = data.name + (isAdmin ? ' (Admin)' : '');
                 document.getElementById('userAvatar').src = data.picture;
                 document.getElementById('userInfo').style.display = 'flex';
+                
+                // Show/hide create button based on admin status
+                const createButton = document.querySelector('.btn-success');
+                if (createButton) {
+                    createButton.style.display = isAdmin ? 'inline-flex' : 'none';
+                }
             });
 
             loadTasks();
@@ -907,6 +923,9 @@
             const creatorFilter = document.getElementById('creatorFilter').value;
 
             tasks = allTasks.filter(task => {
+                // Hide completed tasks from app (they stay in sheet)
+                if (task.completed) return false;
+                
                 if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
                 if (statusFilter === 'completed' && !task.completed) return false;
                 if (statusFilter === 'pending' && task.completed) return false;
@@ -1019,7 +1038,12 @@
                 
                 setTimeout(() => {
                     successMsg.remove();
-                    applyFilters();
+                    // Remove completed task from view immediately
+                    const taskIndex = tasks.findIndex(t => t.id === taskId);
+                    if (taskIndex !== -1) {
+                        tasks.splice(taskIndex, 1);
+                    }
+                    renderTasks();
                     updateStats();
                 }, 1500);
 
@@ -1055,6 +1079,10 @@
 
         // Modal functions
         function openNewTaskModal() {
+            if (!isAdmin) {
+                alert('Only administrators can create new tasks.');
+                return;
+            }
             document.getElementById('newTaskModal').style.display = 'block';
         }
 
@@ -1129,6 +1157,11 @@
         async function createTask(event) {
             event.preventDefault();
             
+            if (!isAdmin) {
+                alert('Only administrators can create tasks.');
+                return;
+            }
+            
             const title = document.getElementById('taskTitle').value.trim();
             const description = document.getElementById('taskDescription').value.trim();
             const priority = document.getElementById('taskPriority').value;
@@ -1193,10 +1226,10 @@
         window.gapiLoaded = gapiLoaded;
         window.gisLoaded = gisLoaded;
 
-        // Auto-refresh every 30 seconds
+        // Auto-refresh every 2 minutes (120 seconds)
         setInterval(() => {
             if (accessToken) loadTasks();
-        }, 30000);
+        }, 120000);
     </script>
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
