@@ -410,7 +410,7 @@
 
     async function loadColumnMap() {
       const meta = await gapi.client.sheets.spreadsheets.values.get({
-        spreadsheetId: SHEET_ID, range: 'List!1:1'
+        spreadsheetId: SHEET_ID, range: 'Sheet1!1:1'
       });
       const headers = (meta.result.values && meta.result.values[0]) || [];
       const map = {}; headers.forEach((h,i)=>{ map[norm(h)] = i; });
@@ -635,7 +635,7 @@
 
       try {
         const response = await gapi.client.sheets.spreadsheets.values.get({
-          spreadsheetId: SHEET_ID, range: 'List!A2:ZZ'
+          spreadsheetId: SHEET_ID, range: 'Sheet1!A2:ZZ'
         });
         const rows = response.result.values || [];
 
@@ -748,7 +748,7 @@
         if (!Object.keys(COLS).length) await loadColumnMap();
         const col = colLetter(COLS['Completed']);
         const resp = await gapi.client.sheets.spreadsheets.values.get({
-          spreadsheetId: SHEET_ID, range: `List!${col}2:${col}`
+          spreadsheetId: SHEET_ID, range: `Sheet1!${col}2:${col}`
         });
         const completedColumn = resp.result.values || [];
         const completedCount = completedColumn.filter(row => (row[0] || '') === 'TRUE').length;
@@ -824,7 +824,7 @@
 
     // ===== Header-driven writes =====
     async function markCompleteRow(row, initials, today) {
-      const rng = `List!${a1(COLS['Completed'],row)}:${a1(COLS['Date Completed'],row)}`;
+      const rng = `Sheet1!${a1(COLS['Completed'],row)}:${a1(COLS['Date Completed'],row)}`;
       return gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID, range: rng, valueInputOption: 'RAW',
         resource: { values: [['TRUE', initials, today]] }
@@ -848,7 +848,7 @@
       arr[COLS['Assigned To']]         = obj.assignedTo;
       arr[COLS['Comments']]            = obj.comments ?? '';
 
-      const range = `List!${a1(0,rowNumber)}:${a1(headerCount-1,rowNumber)}`;
+      const range = `Sheet1!${a1(0,rowNumber)}:${a1(headerCount-1,rowNumber)}`;
       return gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID, range, valueInputOption: 'RAW', resource: { values: [arr] }
       });
@@ -870,7 +870,7 @@
       arr[COLS['Comments']]            = '';
 
       return gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId: SHEET_ID, range: 'List!A1',
+        spreadsheetId: SHEET_ID, range: 'Sheet1!A1',
         valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
         resource: { values: [arr] }
       });
@@ -878,7 +878,7 @@
 
     async function clearRow(rowNumber){
       const headerCount = Object.keys(COLS).length;
-      const range = `List!${a1(0,rowNumber)}:${a1(headerCount-1,rowNumber)}`;
+      const range = `Sheet1!${a1(0,rowNumber)}:${a1(headerCount-1,rowNumber)}`;
       return gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID, range, valueInputOption: 'RAW',
         resource: { values: [Array(headerCount).fill('')] }
@@ -886,7 +886,7 @@
     }
 
     async function updateCommentsCell(rowNumber, commentsJson){
-      const cell = `List!${a1(COLS['Comments'], rowNumber)}`;
+      const cell = `Sheet1!${a1(COLS['Comments'], rowNumber)}`;
       return gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID, range: cell, valueInputOption: 'RAW',
         resource: { values: [[commentsJson]] }
