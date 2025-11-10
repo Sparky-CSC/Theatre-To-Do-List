@@ -330,14 +330,29 @@
 
         .todo-item.priority-high {
             border-left-color: #f44336;
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
         }
 
         .todo-item.priority-medium {
             border-left-color: #ff9800;
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
         }
 
         .todo-item.priority-low {
             border-left-color: #2196f3;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+        }
+
+        body.dark-mode .todo-item.priority-high {
+            background: linear-gradient(135deg, #5d1f1f 0%, #7f2c2c 100%);
+        }
+
+        body.dark-mode .todo-item.priority-medium {
+            background: linear-gradient(135deg, #5d4a1f 0%, #7f6419 100%);
+        }
+
+        body.dark-mode .todo-item.priority-low {
+            background: linear-gradient(135deg, #1f3d5d 0%, #2c5f7f 100%);
         }
 
         .todo-item-header {
@@ -1139,38 +1154,53 @@
                     }
                     accessToken = response.access_token;
                     
+                    // Save preference if remember me is checked
                     const rememberMe = document.getElementById('rememberMe')?.checked;
                     if (rememberMe) {
+                        localStorage.setItem('rememberMe', 'true');
+                        // Store token expiry time for reference
                         const expiresAt = Date.now() + (response.expires_in * 1000);
-                        sessionStorage.setItem('accessToken', accessToken);
-                        sessionStorage.setItem('tokenExpiry', expiresAt);
+                        localStorage.setItem('tokenExpiry', expiresAt);
+                    } else {
+                        localStorage.removeItem('rememberMe');
+                        localStorage.removeItem('tokenExpiry');
                     }
                     
                     onSignInSuccess();
                 },
             });
             
-            checkSavedToken();
+            // Check if user previously selected remember me
+            checkAutoSignIn();
         }
 
-        function checkSavedToken() {
-            const savedToken = sessionStorage.getItem('accessToken');
-            const expiry = sessionStorage.getItem('tokenExpiry');
+        function checkAutoSignIn() {
+            const rememberMe = localStorage.getItem('rememberMe');
+            const tokenExpiry = localStorage.getItem('tokenExpiry');
             
-            if (savedToken && expiry) {
+            if (rememberMe === 'true') {
+                // Check if token is expired or will expire soon (within 5 minutes)
                 const now = Date.now();
-                if (now < parseInt(expiry)) {
-                    accessToken = savedToken;
-                    onSignInSuccess();
-                } else {
-                    sessionStorage.removeItem('accessToken');
-                    sessionStorage.removeItem('tokenExpiry');
+                const expiry = tokenExpiry ? parseInt(tokenExpiry) : 0;
+                
+                if (expiry < now + (5 * 60 * 1000)) {
+                    // Token expired or expiring soon, request new one silently
+                    console.log('Auto-signing in with saved preference...');
+                    tokenClient.requestAccessToken({ prompt: '' });
                 }
             }
         }
 
         function handleSignIn() {
             const rememberMe = document.getElementById('rememberMe').checked;
+            
+            // Save the preference before signing in
+            if (rememberMe) {
+                localStorage.setItem('rememberMe', 'true');
+            } else {
+                localStorage.removeItem('rememberMe');
+            }
+            
             tokenClient.requestAccessToken({
                 prompt: rememberMe ? '' : 'consent'
             });
@@ -1202,17 +1232,20 @@
         }
 
         function signOut() {
-            sessionStorage.removeItem('accessToken');
-            sessionStorage.removeItem('tokenExpiry');
+            // Clear remember me preference and token expiry
+            localStorage.removeItem('rememberMe');
+            localStorage.removeItem('tokenExpiry');
             
-            google.accounts.oauth2.revoke(accessToken, () => {
-                accessToken = null;
-                currentUser = null;
-                isAdmin = false;
-                document.getElementById('loginScreen').style.display = 'block';
-                document.getElementById('mainContent').style.display = 'none';
-                document.getElementById('userInfo').style.display = 'none';
-            });
+            if (accessToken) {
+                google.accounts.oauth2.revoke(accessToken, () => {
+                    accessToken = null;
+                    currentUser = null;
+                    isAdmin = false;
+                    document.getElementById('loginScreen').style.display = 'block';
+                    document.getElementById('mainContent').style.display = 'none';
+                    document.getElementById('userInfo').style.display = 'none';
+                });
+            }
         }
 
         // Load tasks from Google Sheets - FIXED TO EXCLUDE COMPLETED TASKS
@@ -1249,6 +1282,22 @@
                         comments: row[12] || ''
                     }))
                     .filter(task => !task.completed); // ONLY LOAD INCOMPLETE TASKS
+
+                // Sort by priority immediately after loading
+                const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+                allTasks.sort((a, b) => {
+                    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+                    if (priorityDiff !== 0) return priorityDiff;
+                    
+                    // If same priority, sort by due date
+                    if (a.dueDate && b.dueDate) {
+                        return new Date(a.dueDate) - new Date(b.dueDate);
+                    }
+                    if (a.dueDate) return -1;
+                    if (b.dueDate) return 1;
+                    
+                    return 0;
+                });
 
                 tasks = [...allTasks];
                 renderTasks();
@@ -1327,6 +1376,22 @@
                 }
                 
                 return true;
+            });
+
+            // Sort by priority: High first, then Medium, then Low
+            const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+            tasks.sort((a, b) => {
+                const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+                if (priorityDiff !== 0) return priorityDiff;
+                
+                // If same priority, sort by due date (overdue first, then soonest)
+                if (a.dueDate && b.dueDate) {
+                    return new Date(a.dueDate) - new Date(b.dueDate);
+                }
+                if (a.dueDate) return -1; // Tasks with due dates come before those without
+                if (b.dueDate) return 1;
+                
+                return 0;
             });
 
             renderTasks();
