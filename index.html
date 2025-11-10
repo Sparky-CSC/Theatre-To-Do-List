@@ -35,6 +35,8 @@
     .google-signin-btn:hover{box-shadow:0 4px 12px rgba(0,0,0,.15);transform:translateY(-2px)}
     .google-icon{width:24px;height:24px}
     .action-bar{padding:20px;background:var(--bg-light);border-bottom:2px solid var(--border-color);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .action-left{display:flex;gap:10px;flex-wrap:wrap;align-items:center;flex:1}
+    .action-right{display:flex;gap:10px;align-items:center;margin-left:auto}
     .search-box{flex:1;min-width:200px;padding:10px 15px;border:2px solid var(--border-color);border-radius:8px;font-size:.95em}
     .btn{background:var(--primary-gradient);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:.95em;cursor:pointer;transition:all .2s;font-weight:600;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
     .btn:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(102,126,234,.4)}
@@ -78,6 +80,7 @@
     .comments-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color)}
     .comment{background:#fff;padding:10px;border-radius:6px;margin-bottom:8px;font-size:.85em}
     .comment-author{font-weight:600;color:#667eea;margin-bottom:4px}
+    .comment-text{color:var(--text-secondary)}
     .comment-input-group{display:flex;gap:8px;margin-top:8px}
     .comment-input{flex:1;padding:8px;border:2px solid var(--border-color);border-radius:6px;font-size:.85em}
     .loading{text-align:center;padding:40px;color:var(--text-secondary);font-size:1.1em}
@@ -120,8 +123,47 @@
     .modal-footer{padding:20px 25px;border-top:1px solid var(--border-color);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
     .btn-cancel{background:#6c757d}
     #mainContent{display:none}
-    @media (max-width:768px){.header{flex-direction:column;gap:10px}.header h1{font-size:1.5em}.header-right{width:100%;justify-content:center}.action-bar{flex-direction:column;align-items:stretch}.search-box{width:100%}.btn{width:100%;justify-content:center}.filter-section{flex-direction:column;align-items:stretch}.filter-group{flex-direction:column;align-items:stretch}.filter-group select{width:100%}.stats{flex-direction:column;gap:10px}.todo-item-header{flex-direction:column}.todo-item-right{width:100%;justify-content:flex-start}.form-row{grid-template-columns:1fr}.modal-content{width:95%;margin:10px auto}.modal-footer{flex-direction:column}.modal-footer .btn{width:100%}}
-    @media (max-width:480px){body{padding:5px}.container{border-radius:10px}.header{padding:15px}.action-bar,.filter-section,.todo-list{padding:15px}}
+
+    /* Filter visibility panel */
+    .filter-visibility{position:relative;margin-left:auto}
+    .filter-visibility-btn{background:#fff;color:#333;border:2px solid var(--border-color);padding:8px 12px;border-radius:8px;font-weight:600;cursor:pointer}
+    .filter-visibility-menu{position:absolute;right:0;top:110%;background:#fff;border:2px solid var(--border-color);border-radius:10px;padding:10px 12px;box-shadow:0 10px 20px rgba(0,0,0,.08);display:none;min-width:220px;z-index:50}
+    .filter-visibility-menu.show{display:block}
+    .filter-visibility-menu label{display:flex;align-items:center;gap:8px;font-size:.9em;color:var(--text-primary);padding:6px 0;cursor:pointer}
+    .filter-visibility-menu input[type="checkbox"]{width:18px;height:18px}
+
+    /* Export visibility panel */
+    .export-visibility{position:relative}
+    .export-visibility-btn{background:#fff;color:#333;border:2px solid var(--border-color);padding:8px 12px;border-radius:8px;font-weight:600;cursor:pointer}
+    .export-visibility-menu{position:absolute;right:0;top:110%;background:#fff;border:2px solid var(--border-color);border-radius:10px;padding:10px 12px;box-shadow:0 10px 20px rgba(0,0,0,.08);display:none;min-width:220px;z-index:50}
+    .export-visibility-menu.show{display:block}
+    .export-visibility-menu label{display:flex;align-items:center;gap:8px;font-size:.9em;color:var(--text-primary);padding:6px 0;cursor:pointer}
+    .export-visibility-menu input[type="checkbox"]{width:18px;height:18px}
+
+    @media (max-width:768px){
+      .header{flex-direction:column;gap:10px}.header h1{font-size:1.5em}
+      .header-right{width:100%;justify-content:center}
+      .action-bar{flex-direction:column;align-items:stretch}
+      .action-left{width:100%}
+      .action-right{width:100%;justify-content:flex-start}
+      .search-box{width:100%}
+      .btn{width:100%;justify-content:center}
+      .filter-section{flex-direction:column;align-items:stretch}
+      .filter-group{flex-direction:column;align-items:stretch}
+      .filter-group select{width:100%}
+      .stats{flex-direction:column;gap:10px}
+      .todo-item-header{flex-direction:column}
+      .todo-item-right{width:100%;justify-content:flex-start}
+      .form-row{grid-template-columns:1fr}
+      .modal-content{width:95%;margin:10px auto}
+      .modal-footer{flex-direction:column}
+      .modal-footer .btn{width:100%}
+    }
+    @media (max-width:480px){
+      body{padding:5px}.container{border-radius:10px}
+      .header{padding:15px}
+      .action-bar,.filter-section,.todo-list{padding:15px}
+    }
   </style>
 </head>
 <body>
@@ -167,37 +209,80 @@
       </div>
 
       <div class="action-bar">
-        <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search tasks..." oninput="applyFilters()"/>
-        <button class="btn btn-success" onclick="openTaskModal()" id="createBtn" style="display:none;">➕ Create Task</button>
-        <button class="btn btn-info" onclick="exportToPDF()">📄 Export PDF</button>
-        <button class="btn btn-warning" onclick="exportToExcel()">📊 Export Excel</button>
-        <button class="btn" onclick="loadTasks()">↻ Refresh</button>
+        <div class="action-left">
+          <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search tasks..." oninput="applyFilters()"/>
+          <button class="btn" onclick="loadTasks()">↻ Refresh</button>
+          <button class="btn btn-success" onclick="openTaskModal()" id="createBtn" style="display:none;">➕ Create Task</button>
+        </div>
+
+        <div class="action-right">
+          <button class="btn btn-info" id="exportPdfBtn" onclick="exportToPDF()">📄 Export PDF</button>
+          <button class="btn btn-warning" id="exportXlsxBtn" onclick="exportToExcel()">📊 Export Excel</button>
+
+          <!-- Export visibility control -->
+          <div class="export-visibility">
+            <button type="button" class="export-visibility-btn" onclick="toggleExportMenu()">⬜ Export Options</button>
+            <div class="export-visibility-menu" id="exportVisibilityMenu">
+              <label><input type="checkbox" id="visExportPdf" onchange="saveExportVisibility()" checked> Show “Export PDF”</label>
+              <label><input type="checkbox" id="visExportXlsx" onchange="saveExportVisibility()" checked> Show “Export Excel”</label>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="filter-section" id="filterSection">
-        <div class="filter-group">
+        <div class="filter-group" id="fgPriority">
           <label for="priorityFilter">Priority:</label>
           <select id="priorityFilter" onchange="applyFilters()">
-            <option value="all">All</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option>
+            <option value="all">All</option>
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
           </select>
         </div>
-        <div class="filter-group">
+
+        <div class="filter-group" id="fgCategory">
           <label for="categoryFilter">Category:</label>
-          <select id="categoryFilter" onchange="applyFilters()"><option value="all">All</option></select>
+          <select id="categoryFilter" onchange="applyFilters()">
+            <option value="all">All</option>
+          </select>
         </div>
-        <div class="filter-group">
+
+        <div class="filter-group" id="fgCreator">
           <label for="creatorFilter">Created By:</label>
-          <select id="creatorFilter" onchange="applyFilters()"><option value="all">All</option></select>
+          <select id="creatorFilter" onchange="applyFilters()">
+            <option value="all">All</option>
+          </select>
         </div>
-        <div class="filter-group">
+
+        <div class="filter-group" id="fgAssigned">
           <label for="assignedFilter">Assigned To:</label>
-          <select id="assignedFilter" onchange="applyFilters()"><option value="all">All</option></select>
+          <select id="assignedFilter" onchange="applyFilters()">
+            <option value="all">All</option>
+          </select>
         </div>
-        <div class="filter-group">
+
+        <div class="filter-group" id="fgDueDate">
           <label for="dueDateFilter">Due Date:</label>
           <select id="dueDateFilter" onchange="applyFilters()">
-            <option value="all">All</option><option value="overdue">Overdue</option><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option>
+            <option value="all">All</option>
+            <option value="overdue">Overdue</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
           </select>
+        </div>
+
+        <!-- Filter visibility control -->
+        <div class="filter-visibility">
+          <button type="button" class="filter-visibility-btn" onclick="toggleFilterMenu()">⚙️ Filters</button>
+          <div class="filter-visibility-menu" id="filterVisibilityMenu">
+            <label><input type="checkbox" id="visPriority"  onchange="saveFilterVisibility()" checked> Priority</label>
+            <label><input type="checkbox" id="visCategory"  onchange="saveFilterVisibility()" checked> Category</label>
+            <label><input type="checkbox" id="visCreator"   onchange="saveFilterVisibility()" checked> Created By</label>
+            <label><input type="checkbox" id="visAssigned"  onchange="saveFilterVisibility()" checked> Assigned To</label>
+            <label><input type="checkbox" id="visDueDate"   onchange="saveFilterVisibility()" checked> Due Date</label>
+          </div>
         </div>
       </div>
 
@@ -229,7 +314,9 @@
             <div class="form-group">
               <label for="taskPriority">Priority *</label>
               <select id="taskPriority" required>
-                <option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Low">Low</option>
               </select>
             </div>
             <div class="form-group">
@@ -305,7 +392,7 @@
     let taskComments = {};
 
     // === Sign-in loop guards ===
-    let tokenPending = false; // prevent concurrent token requests
+    let tokenPending = false;
     let silentTried = sessionStorage.getItem('silentTried') === 'true';
     function markSilentTried(){ silentTried = true; sessionStorage.setItem('silentTried','true'); }
 
@@ -329,7 +416,6 @@
       const map = {}; headers.forEach((h,i)=>{ map[norm(h)] = i; });
       const missing = REQUIRED_HEADERS.filter(h => !(norm(h) in map));
       if (missing.length){
-        // Do NOT revert to login—surface a message and keep UI
         console.warn('Missing headers:', missing.join(', '));
         throw new Error(`Missing required headers: ${missing.join(', ')}`);
       }
@@ -351,13 +437,8 @@
         scope: SCOPES,
         include_granted_scopes: true,
         callback: async (response) => {
-          tokenPending = false; // clear pending on any response
-
-          if (response.error) {
-            console.warn('Token error:', response);
-            // Don't bounce to login; user can click button
-            return;
-          }
+          tokenPending = false;
+          if (response.error) { console.warn('Token error:', response); return; }
           accessToken = response.access_token;
           gapi.client.setToken({ access_token: accessToken });
 
@@ -370,18 +451,14 @@
           onSignInSuccess();
         }
       });
-
-      // Try silent sign-in exactly once per page load (if rememberMe)
       maybeAutoSignIn();
     }
 
     function maybeAutoSignIn() {
       const rememberMe = localStorage.getItem('rememberMe') === 'true';
       if (!rememberMe || silentTried || tokenPending) return;
-
       markSilentTried();
       tokenPending = true;
-
       const params = { prompt: '' };
       const hint = localStorage.getItem('loginHint');
       if (hint) params.login_hint = hint;
@@ -414,21 +491,18 @@
     }
 
     async function onSignInSuccess() {
-      // Always show app UI; never bounce back to login on recoverable errors
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
 
-      // Try to fetch profile; if it fails, keep UI open
+      // Profile (don’t bounce UI if it fails)
       try {
         const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
-
         if (res.ok) {
           const data = await res.json();
           currentUser = data;
           if (data?.email) localStorage.setItem('loginHint', data.email);
-
           isAdmin = Array.isArray(ADMIN_EMAILS) && ADMIN_EMAILS.includes((data.email || '').toLowerCase());
           document.getElementById('userName').textContent = (data.name || data.email || 'User') + (isAdmin ? ' (Admin)' : '');
           document.getElementById('userAvatar').src = data.picture || '';
@@ -436,22 +510,21 @@
           const createButton = document.getElementById('createBtn');
           if (createButton) createButton.style.display = isAdmin ? 'inline-flex' : 'none';
         } else {
-          console.warn('userinfo fetch failed:', res.status);
-          currentUser = { name: 'User' }; // minimal identity
+          currentUser = { name: 'User' };
         }
-      } catch (e) {
-        console.warn('userinfo error:', e);
-        currentUser = { name: 'User' };
-      }
+      } catch { currentUser = { name: 'User' }; }
 
-      // Load columns + tasks; if headers missing, show message but keep app open
+      // Columns + tasks
       try {
         await loadColumnMap();
         await loadTasks();
       } catch (e) {
-        const list = document.getElementById('todoList');
-        list.innerHTML = `<div class="error">${e.message}</div>`;
+        document.getElementById('todoList').innerHTML = `<div class="error">${e.message}</div>`;
       }
+
+      // Apply visibility states
+      applyFilterVisibility();
+      applyExportVisibility();
     }
 
     function signOut() {
@@ -459,17 +532,13 @@
       localStorage.removeItem('tokenExpiry');
       localStorage.removeItem('loginHint');
       sessionStorage.removeItem('silentTried');
-      tokenPending = false;
-      silentTried = false;
-
+      tokenPending = false; silentTried = false;
       if (tokenRefreshTimer) { clearTimeout(tokenRefreshTimer); tokenRefreshTimer = null; }
 
       if (accessToken) {
         google.accounts.oauth2.revoke(accessToken, () => {
-          accessToken = null;
-          gapi.client.setToken(null);
-          currentUser = null;
-          isAdmin = false;
+          accessToken = null; gapi.client.setToken(null);
+          currentUser = null; isAdmin = false;
           document.getElementById('userInfo').style.display = 'none';
           document.getElementById('mainContent').style.display = 'none';
           document.getElementById('loginScreen').style.display = 'block';
@@ -480,6 +549,81 @@
         document.getElementById('loginScreen').style.display = 'block';
       }
     }
+
+    // ===== Filter visibility =====
+    const FILTER_VIS_KEY = 'filterVisibility';
+    function getFilterVisibility() {
+      const defaults = { priority:true, category:true, creator:true, assigned:true, dueDate:true };
+      try { const raw = localStorage.getItem(FILTER_VIS_KEY); return raw ? { ...defaults, ...JSON.parse(raw) } : defaults; }
+      catch { return defaults; }
+    }
+    function applyFilterVisibility() {
+      const vis = getFilterVisibility();
+      [['fgPriority',vis.priority],['fgCategory',vis.category],['fgCreator',vis.creator],['fgAssigned',vis.assigned],['fgDueDate',vis.dueDate]]
+        .forEach(([id,on])=>{ const el=document.getElementById(id); if(el) el.style.display = on ? '' : 'none'; });
+
+      const vP=document.getElementById('visPriority'); if(vP) vP.checked=vis.priority;
+      const vC=document.getElementById('visCategory'); if(vC) vC.checked=vis.category;
+      const vCr=document.getElementById('visCreator'); if(vCr) vCr.checked=vis.creator;
+      const vA=document.getElementById('visAssigned'); if(vA) vA.checked=vis.assigned;
+      const vD=document.getElementById('visDueDate'); if(vD) vD.checked=vis.dueDate;
+    }
+    function saveFilterVisibility() {
+      const state = {
+        priority: document.getElementById('visPriority')?.checked ?? true,
+        category: document.getElementById('visCategory')?.checked ?? true,
+        creator:  document.getElementById('visCreator')?.checked  ?? true,
+        assigned: document.getElementById('visAssigned')?.checked ?? true,
+        dueDate:  document.getElementById('visDueDate')?.checked  ?? true,
+      };
+      localStorage.setItem(FILTER_VIS_KEY, JSON.stringify(state));
+      applyFilterVisibility();
+    }
+    function toggleFilterMenu() {
+      const menu = document.getElementById('filterVisibilityMenu');
+      if (!menu) return; menu.classList.toggle('show');
+    }
+
+    // ===== Export visibility =====
+    const EXPORT_VIS_KEY = 'exportVisibility';
+    function getExportVisibility(){
+      const defaults = { pdf:true, xlsx:true };
+      try { const raw = localStorage.getItem(EXPORT_VIS_KEY); return raw ? { ...defaults, ...JSON.parse(raw) } : defaults; }
+      catch { return defaults; }
+    }
+    function applyExportVisibility(){
+      const vis = getExportVisibility();
+      const pdfBtn = document.getElementById('exportPdfBtn');
+      const xlsBtn = document.getElementById('exportXlsxBtn');
+      if (pdfBtn) pdfBtn.style.display = vis.pdf ? '' : 'none';
+      if (xlsBtn) xlsBtn.style.display = vis.xlsx ? '' : 'none';
+
+      const cPdf = document.getElementById('visExportPdf'); if (cPdf) cPdf.checked = vis.pdf;
+      const cXls = document.getElementById('visExportXlsx'); if (cXls) cXls.checked = vis.xlsx;
+    }
+    function saveExportVisibility(){
+      const state = {
+        pdf:  document.getElementById('visExportPdf')?.checked  ?? true,
+        xlsx: document.getElementById('visExportXlsx')?.checked ?? true
+      };
+      localStorage.setItem(EXPORT_VIS_KEY, JSON.stringify(state));
+      applyExportVisibility();
+    }
+    function toggleExportMenu(){
+      const menu = document.getElementById('exportVisibilityMenu');
+      if (!menu) return; menu.classList.toggle('show');
+    }
+
+    // Close menus on outside click
+    document.addEventListener('click', (e) => {
+      const fMenu = document.getElementById('filterVisibilityMenu');
+      const fBtn  = document.querySelector('.filter-visibility-btn');
+      if (fMenu && fBtn && !fMenu.contains(e.target) && !fBtn.contains(e.target)) fMenu.classList.remove('show');
+
+      const eMenu = document.getElementById('exportVisibilityMenu');
+      const eBtn  = document.querySelector('.export-visibility-btn');
+      if (eMenu && eBtn && !eMenu.contains(e.target) && !eBtn.contains(e.target)) eMenu.classList.remove('show');
+    });
 
     // ===== Sheets + App logic =====
     async function loadTasks() {
@@ -529,6 +673,10 @@
         renderTasks();
         updateStats();
         populateFilters();
+
+        // re-apply persisted menu states
+        applyFilterVisibility();
+        applyExportVisibility();
       } catch (error) {
         todoList.innerHTML = `<div class="error">Error loading tasks: ${error.message}</div>`;
       }
@@ -546,6 +694,8 @@
       const assignees = [...new Set(allTasks.map(t => t.assignedTo).filter(Boolean))];
       document.getElementById('assignedFilter').innerHTML =
         '<option value="all">All</option>' + assignees.map(a=>`<option value="${a}">${a}</option>`).join('');
+
+      applyFilterVisibility();
     }
 
     function applyFilters() {
@@ -758,10 +908,7 @@
 
       try {
         await markCompleteRow(taskId, initials, today);
-
-        if (task && task.notify && task.notificationEmails) {
-          sendNotification(task, initials, today);
-        }
+        if (task && task.notify && task.notificationEmails) sendNotification(task, initials, today);
 
         const idx = allTasks.findIndex(t => t.id === taskId);
         if (idx !== -1) allTasks.splice(idx, 1);
@@ -936,6 +1083,9 @@
           if (e.key === 'Enter') { e.preventDefault(); addEmailTag(); }
         });
       }
+      // initial menu states for visibility
+      applyFilterVisibility();
+      applyExportVisibility();
     });
     function addEmailTag() {
       const input = document.getElementById('notificationEmails');
@@ -972,19 +1122,6 @@
       `).join('');
     }
     function removeFile(index){ uploadedFiles.splice(index,1); renderFileList(); }
-
-    // Drag & drop
-    const fileUploadArea = document.getElementById('fileUploadArea');
-    if (fileUploadArea) {
-      fileUploadArea.addEventListener('dragover', e => { e.preventDefault(); fileUploadArea.classList.add('dragover'); });
-      fileUploadArea.addEventListener('dragleave', () => fileUploadArea.classList.remove('dragover'));
-      fileUploadArea.addEventListener('drop', e => {
-        e.preventDefault(); fileUploadArea.classList.remove('dragover');
-        const files = Array.from(e.dataTransfer.files);
-        files.forEach(file => { if (file.size <= 5 * 1024 * 1024) uploadedFiles.push(file); });
-        renderFileList();
-      });
-    }
 
     // Dark mode
     function toggleDarkMode() {
@@ -1067,6 +1204,10 @@
     window.removeEmailTag = removeEmailTag;
     window.removeFile = removeFile;
     window.toggleTask = toggleTask;
+    window.toggleFilterMenu = toggleFilterMenu;
+    window.saveFilterVisibility = saveFilterVisibility;
+    window.toggleExportMenu = toggleExportMenu;
+    window.saveExportVisibility = saveExportVisibility;
   </script>
 
   <!-- Google APIs -->
