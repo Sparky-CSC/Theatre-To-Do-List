@@ -1,15 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Interactive To-Do List</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
-    :root{
-      --primary-gradient:linear-gradient(135deg,#667eea 0%,#764ba2 100%);
-      --bg-light:#f8f9fa;--border-color:#e9ecef;--text-primary:#333;--text-secondary:#666
-    }
+    :root{--primary-gradient:linear-gradient(135deg,#667eea 0%,#764ba2 100%);--bg-light:#f8f9fa;--border-color:#e9ecef;--text-primary:#333;--text-secondary:#666}
     body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--primary-gradient);min-height:100vh;padding:10px;transition:background .3s}
     body.dark-mode{--bg-light:#2d3436;--border-color:#4a4a4a;--text-primary:#f8f9fa;--text-secondary:#dfe6e9;background:linear-gradient(135deg,#2d3436 0%,#1e272e 100%)}
     body.dark-mode .container{background:#1e272e}
@@ -17,7 +14,6 @@
     body.dark-mode .modal-content{background:#2d3436;color:var(--text-primary)}
     body.dark-mode input,body.dark-mode textarea,body.dark-mode select{background:#1e272e;color:var(--text-primary);border-color:#4a4a4a}
     body.dark-mode .filter-section{background:#2d3436}
-    body.dark-mode .comment{background:#1e272e}
     .container{max-width:1200px;margin:0 auto;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
     .header{background:var(--primary-gradient);color:#fff;padding:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
     .header-left{flex:1}
@@ -35,7 +31,6 @@
     .login-screen p{color:var(--text-secondary);margin-bottom:30px;font-size:1.1em}
     .remember-me{display:flex;align-items:center;justify-content:center;gap:8px;margin:20px 0;font-size:.95em;color:var(--text-secondary)}
     .remember-me input[type="checkbox"]{width:18px;height:18px;cursor:pointer}
-    .remember-me label{cursor:pointer;user-select:none}
     .google-signin-btn{display:inline-flex;align-items:center;gap:12px;background:#fff;color:#444;border:2px solid #ddd;padding:12px 24px;border-radius:8px;font-size:1.1em;font-weight:600;cursor:pointer;transition:all .3s;box-shadow:0 2px 4px rgba(0,0,0,.1)}
     .google-signin-btn:hover{box-shadow:0 4px 12px rgba(0,0,0,.15);transform:translateY(-2px)}
     .google-icon{width:24px;height:24px}
@@ -83,7 +78,6 @@
     .comments-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color)}
     .comment{background:#fff;padding:10px;border-radius:6px;margin-bottom:8px;font-size:.85em}
     .comment-author{font-weight:600;color:#667eea;margin-bottom:4px}
-    .comment-text{color:var(--text-secondary)}
     .comment-input-group{display:flex;gap:8px;margin-top:8px}
     .comment-input{flex:1;padding:8px;border:2px solid var(--border-color);border-radius:6px;font-size:.85em}
     .loading{text-align:center;padding:40px;color:var(--text-secondary);font-size:1.1em}
@@ -110,9 +104,7 @@
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:15px}
     .checkbox-group{display:flex;align-items:center;gap:8px;padding:12px;background:var(--bg-light);border-radius:6px}
     .checkbox-group input[type="checkbox"]{width:20px;height:20px;cursor:pointer}
-    .checkbox-group label{margin:0;cursor:pointer;font-weight:normal}
     .notification-info{background:#e3f2fd;padding:12px;border-radius:6px;margin-top:10px;font-size:.9em;color:#1976d2}
-    body.dark-mode .notification-info{background:#1a237e;color:#90caf9}
     .email-input-group{display:none;margin-top:10px}
     .email-input-group.active{display:block}
     .email-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
@@ -128,27 +120,8 @@
     .modal-footer{padding:20px 25px;border-top:1px solid var(--border-color);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
     .btn-cancel{background:#6c757d}
     #mainContent{display:none}
-    @media (max-width:768px){
-      .header{flex-direction:column;gap:10px}.header h1{font-size:1.5em}
-      .header-right{width:100%;justify-content:center}
-      .action-bar{flex-direction:column;align-items:stretch}
-      .search-box{width:100%}.btn{width:100%;justify-content:center}
-      .filter-section{flex-direction:column;align-items:stretch}
-      .filter-group{flex-direction:column;align-items:stretch}
-      .filter-group select{width:100%}
-      .stats{flex-direction:column;gap:10px}
-      .todo-item-header{flex-direction:column}
-      .todo-item-right{width:100%;justify-content:flex-start}
-      .form-row{grid-template-columns:1fr}
-      .modal-content{width:95%;margin:10px auto}
-      .modal-footer{flex-direction:column}
-      .modal-footer .btn{width:100%}
-    }
-    @media (max-width:480px){
-      body{padding:5px}.container{border-radius:10px}
-      .header{padding:15px}
-      .action-bar,.filter-section,.todo-list{padding:15px}
-    }
+    @media (max-width:768px){.header{flex-direction:column;gap:10px}.header h1{font-size:1.5em}.header-right{width:100%;justify-content:center}.action-bar{flex-direction:column;align-items:stretch}.search-box{width:100%}.btn{width:100%;justify-content:center}.filter-section{flex-direction:column;align-items:stretch}.filter-group{flex-direction:column;align-items:stretch}.filter-group select{width:100%}.stats{flex-direction:column;gap:10px}.todo-item-header{flex-direction:column}.todo-item-right{width:100%;justify-content:flex-start}.form-row{grid-template-columns:1fr}.modal-content{width:95%;margin:10px auto}.modal-footer{flex-direction:column}.modal-footer .btn{width:100%}}
+    @media (max-width:480px){body{padding:5px}.container{border-radius:10px}.header{padding:15px}.action-bar,.filter-section,.todo-list{padding:15px}}
   </style>
 </head>
 <body>
@@ -188,18 +161,9 @@
 
     <div id="mainContent">
       <div class="stats" id="stats">
-        <div class="stat-item">
-          <div class="stat-number" id="totalTasks">0</div>
-          <div class="stat-label">Total Tasks</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number" id="completedTasks">0</div>
-          <div class="stat-label">Completed</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number" id="pendingTasks">0</div>
-          <div class="stat-label">Pending</div>
-        </div>
+        <div class="stat-item"><div class="stat-number" id="totalTasks">0</div><div class="stat-label">Total Tasks</div></div>
+        <div class="stat-item"><div class="stat-number" id="completedTasks">0</div><div class="stat-label">Completed</div></div>
+        <div class="stat-item"><div class="stat-number" id="pendingTasks">0</div><div class="stat-label">Pending</div></div>
       </div>
 
       <div class="action-bar">
@@ -214,36 +178,25 @@
         <div class="filter-group">
           <label for="priorityFilter">Priority:</label>
           <select id="priorityFilter" onchange="applyFilters()">
-            <option value="all">All</option><option value="High">High</option>
-            <option value="Medium">Medium</option><option value="Low">Low</option>
+            <option value="all">All</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option>
           </select>
         </div>
         <div class="filter-group">
           <label for="categoryFilter">Category:</label>
-          <select id="categoryFilter" onchange="applyFilters()">
-            <option value="all">All</option>
-          </select>
+          <select id="categoryFilter" onchange="applyFilters()"><option value="all">All</option></select>
         </div>
         <div class="filter-group">
           <label for="creatorFilter">Created By:</label>
-          <select id="creatorFilter" onchange="applyFilters()">
-            <option value="all">All</option>
-          </select>
+          <select id="creatorFilter" onchange="applyFilters()"><option value="all">All</option></select>
         </div>
         <div class="filter-group">
           <label for="assignedFilter">Assigned To:</label>
-          <select id="assignedFilter" onchange="applyFilters()">
-            <option value="all">All</option>
-          </select>
+          <select id="assignedFilter" onchange="applyFilters()"><option value="all">All</option></select>
         </div>
         <div class="filter-group">
           <label for="dueDateFilter">Due Date:</label>
           <select id="dueDateFilter" onchange="applyFilters()">
-            <option value="all">All</option>
-            <option value="overdue">Overdue</option>
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
+            <option value="all">All</option><option value="overdue">Overdue</option><option value="today">Today</option><option value="week">This Week</option><option value="month">This Month</option>
           </select>
         </div>
       </div>
@@ -264,24 +217,19 @@
       <div class="modal-body">
         <form id="taskForm" onsubmit="saveTask(event)">
           <input type="hidden" id="editTaskId"/>
-
           <div class="form-group">
             <label for="taskTitle">Task Title *</label>
             <input type="text" id="taskTitle" required placeholder="Enter task title"/>
           </div>
-
           <div class="form-group">
             <label for="taskDescription">Description</label>
             <textarea id="taskDescription" placeholder="Enter task description"></textarea>
           </div>
-
           <div class="form-row">
             <div class="form-group">
               <label for="taskPriority">Priority *</label>
               <select id="taskPriority" required>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Low">Low</option>
+                <option value="Medium">Medium</option><option value="High">High</option><option value="Low">Low</option>
               </select>
             </div>
             <div class="form-group">
@@ -289,7 +237,6 @@
               <input type="text" id="taskCategory" placeholder="e.g., Marketing, Development"/>
             </div>
           </div>
-
           <div class="form-row">
             <div class="form-group">
               <label for="taskDueDate">Due Date</label>
@@ -300,7 +247,6 @@
               <input type="text" id="taskAssignedTo" placeholder="Person's name"/>
             </div>
           </div>
-
           <div class="form-group">
             <label>Email Notifications</label>
             <div class="checkbox-group">
@@ -314,7 +260,6 @@
               <div class="notification-info">💡 Email notifications will be sent when this task is marked complete.</div>
             </div>
           </div>
-
           <div class="form-group">
             <label for="taskFiles">Attachments</label>
             <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
@@ -343,10 +288,7 @@
     const CLIENT_ID = '429266563329-677t97fuhed0v47p5odrfog71qhcqdh6.apps.googleusercontent.com';
     const API_KEY   = 'AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A';
     const SHEET_ID  = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
-
-    // Request Sheets AND profile/email (for name/avatar)
-    const SCOPES   = 'https://www.googleapis.com/auth/spreadsheets openid email profile';
-
+    const SCOPES    = 'https://www.googleapis.com/auth/spreadsheets openid email profile';
     const ADMIN_EMAILS = ['myork@culver.edu','hheaton@culver.edu','dlane@culver.edu'];
 
     let tokenClient;
@@ -362,8 +304,13 @@
     let editingTaskId = null;
     let taskComments = {};
 
+    // === Sign-in loop guards ===
+    let tokenPending = false; // prevent concurrent token requests
+    let silentTried = sessionStorage.getItem('silentTried') === 'true';
+    function markSilentTried(){ silentTried = true; sessionStorage.setItem('silentTried','true'); }
+
     // === Header-driven column mapping ===
-    let COLS = {}; // { Task: idx, Description: idx, ... }
+    let COLS = {};
     const REQUIRED_HEADERS = [
       'Task','Description','Priority','Created By','Completed','Completed By',
       'Date Completed','Notify','Notification Emails','Category','Due Date',
@@ -379,11 +326,11 @@
         spreadsheetId: SHEET_ID, range: 'Sheet1!1:1'
       });
       const headers = (meta.result.values && meta.result.values[0]) || [];
-      const map = {};
-      headers.forEach((h,i)=>{ map[norm(h)] = i; });
-
+      const map = {}; headers.forEach((h,i)=>{ map[norm(h)] = i; });
       const missing = REQUIRED_HEADERS.filter(h => !(norm(h) in map));
       if (missing.length){
+        // Do NOT revert to login—surface a message and keep UI
+        console.warn('Missing headers:', missing.join(', '));
         throw new Error(`Missing required headers: ${missing.join(', ')}`);
       }
       COLS = Object.freeze(REQUIRED_HEADERS.reduce((acc,h)=>{ acc[h]=map[norm(h)]; return acc; }, {}));
@@ -391,7 +338,6 @@
 
     // ===== Google API initialization =====
     function gapiLoaded() { gapi.load('client', initializeGapiClient); }
-
     async function initializeGapiClient() {
       await gapi.client.init({
         apiKey: API_KEY,
@@ -404,8 +350,14 @@
         client_id: CLIENT_ID,
         scope: SCOPES,
         include_granted_scopes: true,
-        callback: (response) => {
-          if (response.error) throw response;
+        callback: async (response) => {
+          tokenPending = false; // clear pending on any response
+
+          if (response.error) {
+            console.warn('Token error:', response);
+            // Don't bounce to login; user can click button
+            return;
+          }
           accessToken = response.access_token;
           gapi.client.setToken({ access_token: accessToken });
 
@@ -418,21 +370,24 @@
           onSignInSuccess();
         }
       });
-      // Try silent sign-in immediately if user chose remember me
+
+      // Try silent sign-in exactly once per page load (if rememberMe)
       maybeAutoSignIn();
     }
 
-    // Silent auth on load if rememberMe=true
     function maybeAutoSignIn() {
       const rememberMe = localStorage.getItem('rememberMe') === 'true';
-      if (!rememberMe) return;
+      if (!rememberMe || silentTried || tokenPending) return;
+
+      markSilentTried();
+      tokenPending = true;
+
       const params = { prompt: '' };
       const hint = localStorage.getItem('loginHint');
       if (hint) params.login_hint = hint;
       tokenClient.requestAccessToken(params);
     }
 
-    // Refresh token ~5 minutes before expiry
     function scheduleTokenRefresh(expiresInSeconds) {
       if (tokenRefreshTimer) clearTimeout(tokenRefreshTimer);
       const refreshMs = Math.max((expiresInSeconds - 300) * 1000, 15000);
@@ -440,11 +395,11 @@
         const params = { prompt: '' };
         const hint = localStorage.getItem('loginHint');
         if (hint) params.login_hint = hint;
+        tokenPending = true;
         tokenClient.requestAccessToken(params);
       }, refreshMs);
     }
 
-    // Visible Sign-in button handler
     function handleSignIn() {
       const remember = document.getElementById('rememberMe')?.checked ?? true;
       if (remember) {
@@ -454,40 +409,48 @@
         localStorage.removeItem('tokenExpiry');
         localStorage.removeItem('loginHint');
       }
+      tokenPending = true;
       tokenClient.requestAccessToken({ prompt: remember ? '' : 'consent' });
     }
 
     async function onSignInSuccess() {
-      // show app UI
+      // Always show app UI; never bounce back to login on recoverable errors
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
 
-      // Fetch user profile (requires openid email profile)
+      // Try to fetch profile; if it fails, keep UI open
       try {
         const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
-        if (!res.ok) {
-          const txt = await res.text();
-          console.warn('userinfo error:', res.status, txt);
-          throw new Error('Failed to fetch user profile—check scopes.');
+
+        if (res.ok) {
+          const data = await res.json();
+          currentUser = data;
+          if (data?.email) localStorage.setItem('loginHint', data.email);
+
+          isAdmin = Array.isArray(ADMIN_EMAILS) && ADMIN_EMAILS.includes((data.email || '').toLowerCase());
+          document.getElementById('userName').textContent = (data.name || data.email || 'User') + (isAdmin ? ' (Admin)' : '');
+          document.getElementById('userAvatar').src = data.picture || '';
+          document.getElementById('userInfo').style.display = 'flex';
+          const createButton = document.getElementById('createBtn');
+          if (createButton) createButton.style.display = isAdmin ? 'inline-flex' : 'none';
+        } else {
+          console.warn('userinfo fetch failed:', res.status);
+          currentUser = { name: 'User' }; // minimal identity
         }
-        const data = await res.json();
-        currentUser = data;
-        if (data?.email) localStorage.setItem('loginHint', data.email);
+      } catch (e) {
+        console.warn('userinfo error:', e);
+        currentUser = { name: 'User' };
+      }
 
-        isAdmin = ADMIN_EMAILS.includes((data.email || '').toLowerCase());
-        document.getElementById('userName').textContent = (data.name || data.email || 'User') + (isAdmin ? ' (Admin)' : '');
-        document.getElementById('userAvatar').src = data.picture || '';
-        document.getElementById('userInfo').style.display = 'flex';
-
-        // Build column map before any load/writes
+      // Load columns + tasks; if headers missing, show message but keep app open
+      try {
         await loadColumnMap();
-        loadTasks();
-      } catch (err) {
-        console.error(err);
-        document.getElementById('loginScreen').style.display = 'block';
-        document.getElementById('mainContent').style.display = 'none';
+        await loadTasks();
+      } catch (e) {
+        const list = document.getElementById('todoList');
+        list.innerHTML = `<div class="error">${e.message}</div>`;
       }
     }
 
@@ -495,6 +458,10 @@
       localStorage.removeItem('rememberMe');
       localStorage.removeItem('tokenExpiry');
       localStorage.removeItem('loginHint');
+      sessionStorage.removeItem('silentTried');
+      tokenPending = false;
+      silentTried = false;
+
       if (tokenRefreshTimer) { clearTimeout(tokenRefreshTimer); tokenRefreshTimer = null; }
 
       if (accessToken) {
@@ -503,16 +470,18 @@
           gapi.client.setToken(null);
           currentUser = null;
           isAdmin = false;
-          document.getElementById('loginScreen').style.display = 'block';
-          document.getElementById('mainContent').style.display = 'none';
           document.getElementById('userInfo').style.display = 'none';
+          document.getElementById('mainContent').style.display = 'none';
+          document.getElementById('loginScreen').style.display = 'block';
         });
+      } else {
+        document.getElementById('userInfo').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'block';
       }
     }
 
     // ===== Sheets + App logic =====
-
-    // Load tasks (exclude completed)
     async function loadTasks() {
       if (!accessToken) return;
       if (!Object.keys(COLS).length) await loadColumnMap();
@@ -521,17 +490,15 @@
       todoList.innerHTML = '<div class="loading">Loading tasks...</div>';
 
       try {
-        // Read all data rows
         const response = await gapi.client.sheets.spreadsheets.values.get({
-          spreadsheetId: SHEET_ID,
-          range: 'Sheet1!A2:ZZ' // wide on purpose; we'll index by COLS
+          spreadsheetId: SHEET_ID, range: 'Sheet1!A2:ZZ'
         });
         const rows = response.result.values || [];
 
         allTasks = rows.map((row, index) => {
           const r = (i)=> (row?.[i] ?? '');
           return {
-            id: index + 2, // sheet row number (header is row 1)
+            id: index + 2,
             task:               r(COLS['Task']),
             description:        r(COLS['Description']),
             priority:           r(COLS['Priority']) || 'Medium',
@@ -569,16 +536,16 @@
 
     function populateFilters() {
       const creators = [...new Set(allTasks.map(t => t.createdBy).filter(Boolean))];
-      const creatorSelect = document.getElementById('creatorFilter');
-      creatorSelect.innerHTML = '<option value="all">All</option>' + creators.map(c => `<option value="${c}">${c}</option>`).join('');
+      document.getElementById('creatorFilter').innerHTML =
+        '<option value="all">All</option>' + creators.map(c=>`<option value="${c}">${c}</option>`).join('');
 
       const categories = [...new Set(allTasks.map(t => t.category).filter(Boolean))];
-      const categorySelect = document.getElementById('categoryFilter');
-      categorySelect.innerHTML = '<option value="all">All</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+      document.getElementById('categoryFilter').innerHTML =
+        '<option value="all">All</option>' + categories.map(c=>`<option value="${c}">${c}</option>`).join('');
 
       const assignees = [...new Set(allTasks.map(t => t.assignedTo).filter(Boolean))];
-      const assignedSelect = document.getElementById('assignedFilter');
-      assignedSelect.innerHTML = '<option value="all">All</option>' + assignees.map(a => `<option value="${a}">${a}</option>`).join('');
+      document.getElementById('assignedFilter').innerHTML =
+        '<option value="all">All</option>' + assignees.map(a=>`<option value="${a}">${a}</option>`).join('');
     }
 
     function applyFilters() {
@@ -602,12 +569,12 @@
           if (dueDateFilter === 'overdue' && dueDate >= today) return false;
           if (dueDateFilter === 'today' && dueDate.toDateString() !== today.toDateString()) return false;
           if (dueDateFilter === 'week') {
-            const weekFromNow = new Date(today); weekFromNow.setDate(weekFromNow.getDate() + 7);
-            if (dueDate < today || dueDate > weekFromNow) return false;
+            const week = new Date(today); week.setDate(week.getDate()+7);
+            if (dueDate < today || dueDate > week) return false;
           }
           if (dueDateFilter === 'month') {
-            const monthFromNow = new Date(today); monthFromNow.setMonth(monthFromNow.getMonth() + 1);
-            if (dueDate < today || dueDate > monthFromNow) return false;
+            const month = new Date(today); month.setMonth(month.getMonth()+1);
+            if (dueDate < today || dueDate > month) return false;
           }
         }
         return true;
@@ -631,17 +598,14 @@
         if (!Object.keys(COLS).length) await loadColumnMap();
         const col = colLetter(COLS['Completed']);
         const resp = await gapi.client.sheets.spreadsheets.values.get({
-          spreadsheetId: SHEET_ID,
-          range: `Sheet1!${col}2:${col}`
+          spreadsheetId: SHEET_ID, range: `Sheet1!${col}2:${col}`
         });
         const completedColumn = resp.result.values || [];
         const completedCount = completedColumn.filter(row => (row[0] || '') === 'TRUE').length;
         document.getElementById('totalTasks').textContent = allTasks.length + completedCount;
         document.getElementById('completedTasks').textContent = completedCount;
         document.getElementById('pendingTasks').textContent = allTasks.length;
-      } catch(e){
-        console.warn('Stats update failed:', e.message);
-      }
+      } catch(e){ console.warn('Stats update failed:', e.message); }
     }
 
     function isOverdue(dueDate) {
@@ -708,7 +672,7 @@
       }).join('');
     }
 
-    // ===== Writes (header-driven) =====
+    // ===== Header-driven writes =====
     async function markCompleteRow(row, initials, today) {
       const rng = `Sheet1!${a1(COLS['Completed'],row)}:${a1(COLS['Date Completed'],row)}`;
       return gapi.client.sheets.spreadsheets.values.update({
@@ -755,7 +719,6 @@
       arr[COLS['Assigned To']]         = obj.assignedTo;
       arr[COLS['Comments']]            = '';
 
-      // Append to sheet; Google will place in next row
       return gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID, range: 'Sheet1!A1',
         valueInputOption: 'RAW', insertDataOption: 'INSERT_ROWS',
@@ -823,7 +786,6 @@
     function sendNotification(task, completedBy, dateCompleted) {
       const emails = task.notificationEmails.split(',').map(e => e.trim()).filter(Boolean);
       console.log('📧 Would send notifications to:', emails, 'for task:', task.task, 'completed by:', completedBy, 'on:', dateCompleted);
-      // Hook up your email service here if needed.
     }
 
     function openTaskModal() {
@@ -960,19 +922,13 @@
       }
     }
 
-    // Email tags
+    // Email tags helpers
     function toggleEmailInput() {
       const checkbox = document.getElementById('enableNotifications');
       const emailGroup = document.getElementById('emailInputGroup');
-      if (checkbox.checked) {
-        emailGroup.classList.add('active');
-      } else {
-        emailGroup.classList.remove('active');
-        notificationEmails = [];
-        document.getElementById('emailTags').innerHTML = '';
-      }
+      if (checkbox.checked) emailGroup.classList.add('active');
+      else { emailGroup.classList.remove('active'); notificationEmails = []; document.getElementById('emailTags').innerHTML = ''; }
     }
-
     document.addEventListener('DOMContentLoaded', () => {
       const emailInput = document.getElementById('notificationEmails');
       if (emailInput) {
@@ -981,29 +937,21 @@
         });
       }
     });
-
     function addEmailTag() {
       const input = document.getElementById('notificationEmails');
       const email = input.value.trim();
-      if (email && validateEmail(email) && !notificationEmails.includes(email)) {
-        notificationEmails.push(email); renderEmailTags(); input.value = '';
-      } else if (notificationEmails.includes(email)) {
-        alert('This email is already added!');
-      } else if (email) {
-        alert('Please enter a valid email address!');
-      }
+      if (email && validateEmail(email) && !notificationEmails.includes(email)) { notificationEmails.push(email); renderEmailTags(); input.value=''; }
+      else if (notificationEmails.includes(email)) alert('This email is already added!');
+      else if (email) alert('Please enter a valid email address!');
     }
-
-    function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
-
-    function renderEmailTags() {
+    function validateEmail(email){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); }
+    function renderEmailTags(){
       const container = document.getElementById('emailTags');
       container.innerHTML = notificationEmails.map((email, index) => `
         <div class="email-tag">${email}<span class="remove" onclick="removeEmailTag(${index})">×</span></div>
       `).join('');
     }
-
-    function removeEmailTag(index) { notificationEmails.splice(index, 1); renderEmailTags(); }
+    function removeEmailTag(index){ notificationEmails.splice(index,1); renderEmailTags(); }
 
     // File handling
     function handleFileSelect(event) {
@@ -1023,9 +971,9 @@
         </div>
       `).join('');
     }
-    function removeFile(index) { uploadedFiles.splice(index, 1); renderFileList(); }
+    function removeFile(index){ uploadedFiles.splice(index,1); renderFileList(); }
 
-    // Drag & drop for files
+    // Drag & drop
     const fileUploadArea = document.getElementById('fileUploadArea');
     if (fileUploadArea) {
       fileUploadArea.addEventListener('dragover', e => { e.preventDefault(); fileUploadArea.classList.add('dragover'); });
@@ -1059,7 +1007,6 @@
       doc.setFontSize(10);
       doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 28);
       doc.text(`Total Tasks: ${tasks.length}`, 14, 34);
-
       const tableData = tasks.map(task => [
         task.task, task.priority, task.category || 'N/A',
         task.assignedTo || 'Unassigned', task.dueDate || 'No due date', task.createdBy
@@ -1071,7 +1018,6 @@
       });
       doc.save('todo-list.pdf');
     }
-
     function exportToExcel() {
       const data = tasks.map(task => ({
         'Task': task.task,
@@ -1089,7 +1035,7 @@
       XLSX.writeFile(wb, 'todo-list.xlsx');
     }
 
-    // Close modal when clicking outside
+    // Close modal on outside click
     window.onclick = function(event) {
       const modal = document.getElementById('taskModal');
       if (event.target === modal) closeTaskModal();
