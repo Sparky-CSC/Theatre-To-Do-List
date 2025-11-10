@@ -1106,154 +1106,219 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script>
-        // Configuration
-        const CLIENT_ID = '429266563329-677t97fuhed0v47p5odrfog71qhcqdh6.apps.googleusercontent.com';
-        const API_KEY = 'AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A';
-        const SHEET_ID = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
-        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+    // === CONFIG ===
+    const CLIENT_ID = '429266563329-677t97fuhed0v47p5odrfog71qhcqdh6.apps.googleusercontent.com';
+    const API_KEY = 'AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A';
+    const SHEET_ID = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
+    const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
 
-        const ADMIN_EMAILS = [
-            'myork@culver.edu',
-            'hheaton@culver.edu',
-            'dlane@culver.edu'
-        ];
+    const ADMIN_EMAILS = [
+        'myork@culver.edu',
+        'hheaton@culver.edu',
+        'dlane@culver.edu'
+    ];
 
-        let tokenClient;
-        let accessToken = null;
-        let tasks = [];
-        let allTasks = [];
-        let currentUser = null;
-        let isAdmin = false;
-        let notificationEmails = [];
-        let uploadedFiles = [];
-        let editingTaskId = null;
-        let taskComments = {};
+    let tokenClient;
+    let accessToken = null;
+    let tokenRefreshTimer = null;
 
-        // Google API initialization
-        function gapiLoaded() {
-            gapi.load('client', initializeGapiClient);
-        }
+    let tasks = [];
+    let allTasks = [];
+    let currentUser = null;
+    let isAdmin = false;
+    let notificationEmails = [];
+    let uploadedFiles = [];
+    let editingTaskId = null;
+    let taskComments = {};
 
-        async function initializeGapiClient() {
-            await gapi.client.init({
-                apiKey: API_KEY,
-                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-            });
-        }
+    // --- Google API init ---
+    function gapiLoaded() {
+        gapi.load('client', initializeGapiClient);
+    }
 
-        function gisLoaded() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: (response) => {
-                    if (response.error !== undefined) {
-                        throw (response);
-                    }
-                    accessToken = response.access_token;
-                    
-                    // Save preference if remember me is checked
-                    const rememberMe = document.getElementById('rememberMe')?.checked;
-                    if (rememberMe) {
-                        localStorage.setItem('rememberMe', 'true');
-                        // Store token expiry time for reference
-                        const expiresAt = Date.now() + (response.expires_in * 1000);
-                        localStorage.setItem('tokenExpiry', expiresAt);
-                    } else {
-                        localStorage.removeItem('rememberMe');
-                        localStorage.removeItem('tokenExpiry');
-                    }
-                    
-                    onSignInSuccess();
-                },
-            });
-            
-            // Check if user previously selected remember me
-            checkAutoSignIn();
-        }
+    async function initializeGapiClient() {
+        await gapi.client.init({
+            apiKey: API_KEY,
+            discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+        });
+    }
 
-        function checkAutoSignIn() {
-            const rememberMe = localStorage.getItem('rememberMe');
-            const tokenExpiry = localStorage.getItem('tokenExpiry');
-            
-            if (rememberMe === 'true') {
-                // Check if token is expired or will expire soon (within 5 minutes)
-                const now = Date.now();
-                const expiry = tokenExpiry ? parseInt(tokenExpiry) : 0;
-                
-                if (expiry < now + (5 * 60 * 1000)) {
-                    // Token expired or expiring soon, request new one silently
-                    console.log('Auto-signing in with saved preference...');
-                    tokenClient.requestAccessToken({ prompt: '' });
+    function gisLoaded() {
+        tokenClient = google.accounts.oauth2.initTokenClient({
+            client_id: CLIENT_ID,
+            scope: SCOPES,
+            // include_granted_scopes helps avoid repeat consent if scopes were already approved
+            include_granted_scopes: true,
+            callback: (response) => {
+                if (response.error) throw response;
+
+                accessToken = response.access_token;
+
+                // Make sure gapi uses this token for Sheets calls
+                gapi.client.setToken({ access_token: accessToken });
+
+                // Remember-me prefs
+                const rememberMe = localStorage.getItem('rememberMe') === 'true';
+                if (rememberMe && typeof response.expires_in === 'number') {
+                    const expiresAt = Date.now() + response.expires_in * 1000;
+                    localStorage.setItem('tokenExpiry', String(expiresAt));
                 }
-            }
+
+                // Schedule a silent refresh ~5 minutes before expiry
+                scheduleTokenRefresh(response.expires_in);
+
+                onSignInSuccess();
+            },
+        });
+
+        // Try silent sign-in immediately if user chose "remember me"
+        maybeAutoSignIn();
+    }
+
+    // Always try a silent access token if rememberMe is set.
+    function maybeAutoSignIn() {
+        const rememberMe = localStorage.getItem('rememberMe') === 'true';
+        if (!rememberMe) return;
+
+        // Optional: pass login_hint if we stored it previously to improve silent auth
+        const loginHint = localStorage.getItem('loginHint') || undefined;
+
+        // Silent request (no popups if Google session cookie is present and origins match)
+        tokenClient.requestAccessToken({ prompt: '', login_hint: loginHint });
+    }
+
+    // Refresh the token before it expires to keep the session alive
+    function scheduleTokenRefresh(expiresInSeconds) {
+        if (tokenRefreshTimer) {
+            clearTimeout(tokenRefreshTimer);
+            tokenRefreshTimer = null;
         }
+        // Refresh 5 minutes before expiry, but never sooner than 15s from now
+        const refreshMs = Math.max((expiresInSeconds - 5 * 60) * 1000, 15000);
+        tokenRefreshTimer = setTimeout(() => {
+            // Silent refresh; if user has a Google session cookie, this is seamless
+            const loginHint = localStorage.getItem('loginHint') || undefined;
+            tokenClient.requestAccessToken({ prompt: '', login_hint: loginHint });
+        }, refreshMs);
+    }
 
-        function handleSignIn() {
-            const rememberMe = document.getElementById('rememberMe').checked;
-            
-            // Save the preference before signing in
-            if (rememberMe) {
-                localStorage.setItem('rememberMe', 'true');
-            } else {
-                localStorage.removeItem('rememberMe');
-            }
-            
-            tokenClient.requestAccessToken({
-                prompt: rememberMe ? '' : 'consent'
-            });
-        }
-
-        function onSignInSuccess() {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('mainContent').style.display = 'block';
-            
-            fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            })
-            .then(response => response.json())
-            .then(data => {
-                currentUser = data;
-                isAdmin = ADMIN_EMAILS.includes(data.email.toLowerCase());
-                
-                document.getElementById('userName').textContent = data.name + (isAdmin ? ' (Admin)' : '');
-                document.getElementById('userAvatar').src = data.picture;
-                document.getElementById('userInfo').style.display = 'flex';
-                
-                const createButton = document.getElementById('createBtn');
-                if (createButton) {
-                    createButton.style.display = isAdmin ? 'inline-flex' : 'none';
-                }
-            });
-
-            loadTasks();
-        }
-
-        function signOut() {
-            // Clear remember me preference and token expiry
+    // Click handler for the visible "Sign in with Google" button
+    function handleSignIn() {
+        const remember = document.getElementById('rememberMe')?.checked ?? true;
+        if (remember) {
+            localStorage.setItem('rememberMe', 'true');
+        } else {
             localStorage.removeItem('rememberMe');
             localStorage.removeItem('tokenExpiry');
-            
-            if (accessToken) {
-                google.accounts.oauth2.revoke(accessToken, () => {
-                    accessToken = null;
-                    currentUser = null;
-                    isAdmin = false;
-                    document.getElementById('loginScreen').style.display = 'block';
-                    document.getElementById('mainContent').style.display = 'none';
-                    document.getElementById('userInfo').style.display = 'none';
-                });
-            }
+            localStorage.removeItem('loginHint');
+        }
+        tokenClient.requestAccessToken({
+            // If they didn't choose remember, show consent picker; otherwise stay silent
+            prompt: remember ? '' : 'consent'
+        });
+    }
+
+    async function onSignInSuccess() {
+        // Show UI
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('mainContent').style.display = 'block';
+
+        // Fetch user profile to show avatar/name, and save login_hint for future silent auth
+        const res = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const data = await res.json();
+        currentUser = data;
+
+        // Save login_hint (email) to improve future silent token grants
+        if (data?.email) localStorage.setItem('loginHint', data.email);
+
+        isAdmin = ADMIN_EMAILS.includes((data.email || '').toLowerCase());
+        document.getElementById('userName').textContent = data.name + (isAdmin ? ' (Admin)' : '');
+        document.getElementById('userAvatar').src = data.picture || '';
+        document.getElementById('userInfo').style.display = 'flex';
+
+        const createButton = document.getElementById('createBtn');
+        if (createButton) createButton.style.display = isAdmin ? 'inline-flex' : 'none';
+
+        loadTasks();
+    }
+
+    function signOut() {
+        // Clear remember-me & timers
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('tokenExpiry');
+        localStorage.removeItem('loginHint');
+        if (tokenRefreshTimer) {
+            clearTimeout(tokenRefreshTimer);
+            tokenRefreshTimer = null;
         }
 
-        // Load tasks from Google Sheets - FIXED TO EXCLUDE COMPLETED TASKS
-        async function loadTasks() {
-            if (!accessToken) return;
+        if (accessToken) {
+            google.accounts.oauth2.revoke(accessToken, () => {
+                accessToken = null;
+                gapi.client.setToken(null);
+                currentUser = null;
+                isAdmin = false;
+                document.getElementById('loginScreen').style.display = 'block';
+                document.getElementById('mainContent').style.display = 'none';
+                document.getElementById('userInfo').style.display = 'none';
+            });
+        }
+    }
 
-            const todoList = document.getElementById('todoList');
-            todoList.innerHTML = '<div class="loading">Loading tasks...</div>';
+    // ======= YOUR EXISTING APP CODE (unchanged except where noted) =======
+
+    async function loadTasks() {
+        if (!accessToken) return;
+        const todoList = document.getElementById('todoList');
+        todoList.innerHTML = '<div class="loading">Loading tasks...</div>';
+        try {
+            const response = await gapi.client.sheets.spreadsheets.values.get({
+                spreadsheetId: SHEET_ID,
+                range: 'Sheet1!A2:M',
+            });
+            const rows = response.result.values || [];
+            allTasks = rows
+                .map((row, index) => ({
+                    id: index + 2,
+                    task: row[0] || '',
+                    description: row[1] || '',
+                    priority: row[2] || 'Medium',
+                    createdBy: row[3] || '',
+                    completed: row[4] === 'TRUE',
+                    completedBy: row[5] || '',
+                    dateCompleted: row[6] || '',
+                    notify: row[7] === 'TRUE',
+                    notificationEmails: row[8] || '',
+                    category: row[9] || '',
+                    dueDate: row[10] || '',
+                    assignedTo: row[11] || '',
+                    comments: row[12] || ''
+                }))
+                .filter(task => !task.completed);
+
+            const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+            allTasks.sort((a, b) => {
+                const d = priorityOrder[a.priority] - priorityOrder[b.priority];
+                if (d) return d;
+                if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+                if (a.dueDate) return -1;
+                if (b.dueDate) return 1;
+                return 0;
+            });
+
+            tasks = [...allTasks];
+            renderTasks();
+            updateStats();
+            populateFilters();
+        } catch (error) {
+            todoList.innerHTML = `<div class="error">Error loading tasks: ${error.message}</div>`;
+        }
+    }
 
             try {
                 const response = await gapi.client.sheets.spreadsheets.values.get({
