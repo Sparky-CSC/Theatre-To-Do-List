@@ -310,6 +310,8 @@
             <label for="taskDescription">Description</label>
             <textarea id="taskDescription" placeholder="Enter task description"></textarea>
           </div>
+
+          <!-- Row: Priority & Category -->
           <div class="form-row">
             <div class="form-group">
               <label for="taskPriority">Priority *</label>
@@ -324,18 +326,29 @@
               <input type="text" id="taskCategory" placeholder="e.g., Marketing, Development"/>
             </div>
           </div>
+
+          <!-- Row: Due Date & Due Time (optional) -->
           <div class="form-row">
             <div class="form-group">
               <label for="taskDueDate">Due Date</label>
               <input type="date" id="taskDueDate"/>
             </div>
-            <!-- Assign To with datalist dropdown -->
+            <div class="form-group">
+              <label for="taskDueTime">Complete by (time) — optional</label>
+              <input type="time" id="taskDueTime"/>
+            </div>
+          </div>
+
+          <!-- Row: Assign To -->
+          <div class="form-row">
             <div class="form-group">
               <label for="taskAssignedTo">Assign To</label>
               <input type="text" id="taskAssignedTo" list="assigneesList" placeholder="Select or type a name"/>
               <datalist id="assigneesList"></datalist>
             </div>
+            <div class="form-group"></div>
           </div>
+
           <div class="form-group">
             <label>Email Notifications</label>
             <div class="checkbox-group">
@@ -349,6 +362,7 @@
               <div class="notification-info">💡 Email notifications will be sent when this task is marked complete.</div>
             </div>
           </div>
+
           <div class="form-group">
             <label for="taskFiles">Attachments</label>
             <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
@@ -400,11 +414,13 @@
 
     // === Header-driven column mapping ===
     let COLS = {};
+    let OPT_COLS = {}; // optional columns
     const REQUIRED_HEADERS = [
       'Task','Description','Priority','Created By','Completed','Completed By',
       'Date Completed','Notify','Notification Emails','Category','Due Date',
       'Assigned To','Comments'
     ];
+    const OPTIONAL_HEADERS = ['Due Time']; // NEW: optional column
     const norm = s => String(s||'').trim().toLowerCase();
     function colLetter(idx){ let s=''; idx++; while(idx){ let m=(idx-1)%26; s=String.fromCharCode(65+m)+s; idx=(idx-m-1)/26|0; } return s; }
     function a1(colIdx,rowIdx){ return `${colLetter(colIdx)}${rowIdx}`; }
@@ -416,12 +432,18 @@
       });
       const headers = (meta.result.values && meta.result.values[0]) || [];
       const map = {}; headers.forEach((h,i)=>{ map[norm(h)] = i; });
+
       const missing = REQUIRED_HEADERS.filter(h => !(norm(h) in map));
       if (missing.length){
         console.warn('Missing headers:', missing.join(', '));
         throw new Error(`Missing required headers: ${missing.join(', ')}`);
       }
+
       COLS = Object.freeze(REQUIRED_HEADERS.reduce((acc,h)=>{ acc[h]=map[norm(h)]; return acc; }, {}));
+      OPT_COLS = Object.freeze(OPTIONAL_HEADERS.reduce((acc,h)=>{
+        if (norm(h) in map) acc[h]=map[norm(h)];
+        return acc;
+      }, {}));
     }
 
     // ===== Google API initialization =====
@@ -496,7 +518,7 @@
       document.getElementById('loginScreen').style.display = 'none';
       document.getElementById('mainContent').style.display = 'block';
 
-      // Profile (don’t bounce UI if it fails)
+      // Profile
       try {
         const res = await fetch('https://openidconnect.googleapis.com/v1/userinfo', {
           headers: { Authorization: `Bearer ${accessToken}` }
@@ -656,6 +678,8 @@
             notificationEmails: r(COLS['Notification Emails']),
             category:           r(COLS['Category']),
             dueDate:            r(COLS['Due Date']),
+            // NEW: optional due time mapping
+            dueTime:            (OPT_COLS['Due Time'] != null) ? r(OPT_COLS['Due Time']) : '',
             assignedTo:         r(COLS['Assigned To']),
             comments:           r(COLS['Comments'])
           };
@@ -675,9 +699,7 @@
         renderTasks();
         updateStats();
         populateFilters();
-
-        // NEW: keep Assign To dropdown fresh
-        populateAssigneeDatalist();
+        populateAssigneeDatalist(); // keep Assign To suggestions fresh
 
         // re-apply persisted menu states
         applyFilterVisibility();
@@ -703,7 +725,7 @@
       applyFilterVisibility();
     }
 
-    // NEW: Build the datalist used by the Assign To input
+    // Build the datalist used by the Assign To input
     function populateAssigneeDatalist() {
       const list = document.getElementById('assigneesList');
       if (!list) return;
@@ -781,11 +803,20 @@
       } catch(e){ console.warn('Stats update failed:', e.message); }
     }
 
-    function isOverdue(dueDate) {
-      if (!dueDate) return false;
-      const due = new Date(dueDate);
-      const today = new Date(); today.setHours(0,0,0,0);
-      return due < today;
+    function isOverdue(dueDate, dueTime) {
+      if (!dueDate && !dueTime) return false;
+      let compare;
+      if (dueDate) {
+        if (dueTime) {
+          compare = new Date(`${dueDate}T${dueTime}:00`);
+        } else {
+          compare = new Date(`${dueDate}T23:59:59`);
+        }
+      } else {
+        return false;
+      }
+      const now = new Date();
+      return compare.getTime() < now.getTime();
     }
 
     function renderTasks() {
@@ -794,7 +825,7 @@
 
       todoList.innerHTML = tasks.map(task => {
         const taskCommentsList = task.comments ? JSON.parse(task.comments) : [];
-        const overdue = isOverdue(task.dueDate);
+        const overdue = isOverdue(task.dueDate, task.dueTime);
         return `
           <div class="todo-item priority-${task.priority.toLowerCase()}" data-id="${task.id}">
             <div class="todo-item-header">
@@ -812,7 +843,7 @@
                   <div class="todo-meta">
                     <div class="meta-item">👤 Created by: <strong>${task.createdBy}</strong></div>
                     ${task.assignedTo ? `<div class="meta-item">👥 Assigned to: <strong>${task.assignedTo}</strong></div>` : ''}
-                    ${task.dueDate ? `<div class="meta-item">📅 Due: <strong>${task.dueDate}</strong></div>` : ''}
+                    ${(task.dueDate || task.dueTime) ? `<div class="meta-item">📅 Due: <strong>${task.dueDate || '—'}${task.dueTime ? ' ' + task.dueTime : ''}</strong></div>` : ''}
                     ${taskCommentsList.length ? `<div class="meta-item">💬 ${taskCommentsList.length} comment(s)</div>` : ''}
                   </div>
                   <div class="todo-actions">
@@ -855,7 +886,7 @@
     }
 
     async function writeTaskAtRow(rowNumber, obj){
-      const headerCount = Object.keys(COLS).length;
+      const headerCount = Math.max(...Object.values({...COLS,...OPT_COLS})) + 1;
       const arr = emptyRowArray(headerCount);
       arr[COLS['Task']]                = obj.title;
       arr[COLS['Description']]         = obj.description;
@@ -870,15 +901,17 @@
       arr[COLS['Due Date']]            = obj.dueDate;
       arr[COLS['Assigned To']]         = obj.assignedTo;
       arr[COLS['Comments']]            = obj.comments ?? '';
+      // Optional Due Time
+      if (OPT_COLS['Due Time'] != null) arr[OPT_COLS['Due Time']] = obj.dueTime || '';
 
-      const range = `Sheet1!${a1(0,rowNumber)}:${a1(headerCount-1,rowNumber)}`;
+      const range = `Sheet1!${a1(0,rowNumber)}:${a1(arr.length-1,rowNumber)}`;
       return gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID, range, valueInputOption: 'RAW', resource: { values: [arr] }
       });
     }
 
     async function appendTaskRow(obj){
-      const headerCount = Object.keys(COLS).length;
+      const headerCount = Math.max(...Object.values({...COLS,...OPT_COLS})) + 1;
       const arr = emptyRowArray(headerCount);
       arr[COLS['Task']]                = obj.title;
       arr[COLS['Description']]         = obj.description;
@@ -891,6 +924,8 @@
       arr[COLS['Due Date']]            = obj.dueDate;
       arr[COLS['Assigned To']]         = obj.assignedTo;
       arr[COLS['Comments']]            = '';
+      // Optional Due Time
+      if (OPT_COLS['Due Time'] != null) arr[OPT_COLS['Due Time']] = obj.dueTime || '';
 
       return gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId: SHEET_ID, range: 'Sheet1!A1',
@@ -900,7 +935,7 @@
     }
 
     async function clearRow(rowNumber){
-      const headerCount = Object.keys(COLS).length;
+      const headerCount = Math.max(...Object.values({...COLS,...OPT_COLS})) + 1;
       const range = `Sheet1!${a1(0,rowNumber)}:${a1(headerCount-1,rowNumber)}`;
       return gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID, range, valueInputOption: 'RAW',
@@ -968,10 +1003,7 @@
       document.getElementById('emailTags').innerHTML = '';
       document.getElementById('fileList').innerHTML = '';
       document.getElementById('emailInputGroup').classList.remove('active');
-
-      // NEW: refresh assignee options when opening modal
       populateAssigneeDatalist();
-
       document.getElementById('taskModal').style.display = 'block';
     }
 
@@ -987,6 +1019,7 @@
       document.getElementById('taskPriority').value = task.priority;
       document.getElementById('taskCategory').value = task.category || '';
       document.getElementById('taskDueDate').value = task.dueDate || '';
+      document.getElementById('taskDueTime').value = task.dueTime || '';
       document.getElementById('taskAssignedTo').value = task.assignedTo || '';
       document.getElementById('enableNotifications').checked = task.notify;
 
@@ -996,9 +1029,7 @@
         renderEmailTags();
       }
 
-      // NEW: ensure datalist is current for editing too
       populateAssigneeDatalist();
-
       document.getElementById('taskModal').style.display = 'block';
     }
 
@@ -1010,7 +1041,6 @@
       editingTaskId = null;
     }
 
-    // NEW: small helper to remember typed assignees
     function rememberAssignee(name) {
       const key = 'recentAssignees';
       try {
@@ -1032,13 +1062,13 @@
       const priority = document.getElementById('taskPriority').value;
       const category = document.getElementById('taskCategory').value.trim();
       const dueDate = document.getElementById('taskDueDate').value;
+      const dueTime = document.getElementById('taskDueTime').value.trim(); // NEW
       const assignedTo = document.getElementById('taskAssignedTo').value.trim();
       const notify = document.getElementById('enableNotifications').checked;
       const emails = notificationEmails.join(',');
 
       if (!title) { alert('Please enter a task title!'); return; }
 
-      // NEW: remember any newly typed assignees locally
       rememberAssignee(assignedTo);
 
       try {
@@ -1046,14 +1076,14 @@
           await writeTaskAtRow(editingTaskId, {
             title, description, priority,
             createdBy: (currentUser?.name || currentUser?.email || ''),
-            notify, emails, category, dueDate, assignedTo,
+            notify, emails, category, dueDate, dueTime, assignedTo,
             comments: taskComments[editingTaskId] || ''
           });
         } else {
           await appendTaskRow({
             title, description, priority,
             createdBy: (currentUser?.name || currentUser?.email || ''),
-            notify, emails, category, dueDate, assignedTo
+            notify, emails, category, dueDate, dueTime, assignedTo
           });
         }
 
@@ -1191,7 +1221,9 @@
       doc.text(`Total Tasks: ${tasks.length}`, 14, 34);
       const tableData = tasks.map(task => [
         task.task, task.priority, task.category || 'N/A',
-        task.assignedTo || 'Unassigned', task.dueDate || 'No due date', task.createdBy
+        task.assignedTo || 'Unassigned',
+        (task.dueDate ? task.dueDate : 'No due date') + (task.dueTime ? ' ' + task.dueTime : ''),
+        task.createdBy
       ]);
       doc.autoTable({
         head: [['Task','Priority','Category','Assigned To','Due Date','Created By']],
@@ -1209,6 +1241,7 @@
         'Created By': task.createdBy,
         'Assigned To': task.assignedTo || '',
         'Due Date': task.dueDate || '',
+        'Due Time': task.dueTime || '', // NEW column in export
         'Notify': task.notify ? 'Yes' : 'No'
       }));
       const ws = XLSX.utils.json_to_sheet(data);
