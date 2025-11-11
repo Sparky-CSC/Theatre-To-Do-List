@@ -329,9 +329,11 @@
               <label for="taskDueDate">Due Date</label>
               <input type="date" id="taskDueDate"/>
             </div>
+            <!-- Assign To with datalist dropdown -->
             <div class="form-group">
               <label for="taskAssignedTo">Assign To</label>
-              <input type="text" id="taskAssignedTo" placeholder="Person's name"/>
+              <input type="text" id="taskAssignedTo" list="assigneesList" placeholder="Select or type a name"/>
+              <datalist id="assigneesList"></datalist>
             </div>
           </div>
           <div class="form-group">
@@ -674,6 +676,9 @@
         updateStats();
         populateFilters();
 
+        // NEW: keep Assign To dropdown fresh
+        populateAssigneeDatalist();
+
         // re-apply persisted menu states
         applyFilterVisibility();
         applyExportVisibility();
@@ -696,6 +701,24 @@
         '<option value="all">All</option>' + assignees.map(a=>`<option value="${a}">${a}</option>`).join('');
 
       applyFilterVisibility();
+    }
+
+    // NEW: Build the datalist used by the Assign To input
+    function populateAssigneeDatalist() {
+      const list = document.getElementById('assigneesList');
+      if (!list) return;
+
+      const set = new Set(allTasks.map(t => (t.assignedTo || '').trim()).filter(Boolean));
+      const me = (currentUser?.name || currentUser?.email || '').trim();
+      if (me) set.add(me);
+
+      try {
+        const recent = JSON.parse(localStorage.getItem('recentAssignees') || '[]');
+        recent.forEach(n => n && set.add(n));
+      } catch {}
+
+      list.innerHTML = [...set].sort((a,b)=>a.localeCompare(b))
+        .map(name => `<option value="${name}"></option>`).join('');
     }
 
     function applyFilters() {
@@ -945,6 +968,10 @@
       document.getElementById('emailTags').innerHTML = '';
       document.getElementById('fileList').innerHTML = '';
       document.getElementById('emailInputGroup').classList.remove('active');
+
+      // NEW: refresh assignee options when opening modal
+      populateAssigneeDatalist();
+
       document.getElementById('taskModal').style.display = 'block';
     }
 
@@ -969,6 +996,9 @@
         renderEmailTags();
       }
 
+      // NEW: ensure datalist is current for editing too
+      populateAssigneeDatalist();
+
       document.getElementById('taskModal').style.display = 'block';
     }
 
@@ -978,6 +1008,18 @@
       notificationEmails = [];
       uploadedFiles = [];
       editingTaskId = null;
+    }
+
+    // NEW: small helper to remember typed assignees
+    function rememberAssignee(name) {
+      const key = 'recentAssignees';
+      try {
+        const arr = JSON.parse(localStorage.getItem(key) || '[]');
+        if (name && !arr.includes(name)) {
+          arr.unshift(name);
+          localStorage.setItem(key, JSON.stringify(arr.slice(0, 15)));
+        }
+      } catch {}
     }
 
     async function saveTask(event) {
@@ -995,6 +1037,9 @@
       const emails = notificationEmails.join(',');
 
       if (!title) { alert('Please enter a task title!'); return; }
+
+      // NEW: remember any newly typed assignees locally
+      rememberAssignee(assignedTo);
 
       try {
         if (editingTaskId) {
