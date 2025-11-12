@@ -227,6 +227,27 @@
             align-items: center;
         }
 
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            transition: all 0.3s ease;
+        }
+
+        .export-buttons.hidden {
+            display: none;
+        }
+
+        .toggle-section-btn {
+            background: #6c757d;
+            padding: 8px 16px;
+            font-size: 0.9em;
+        }
+
+        .toggle-section-btn:hover {
+            background: #5a6268;
+        }
+
         .search-box {
             flex: 1;
             min-width: 200px;
@@ -286,6 +307,15 @@
             gap: 10px;
             flex-wrap: wrap;
             align-items: center;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            max-height: 200px;
+        }
+
+        .filter-section.collapsed {
+            max-height: 0;
+            padding: 0 20px;
+            border-bottom: none;
         }
 
         .filter-group {
@@ -964,12 +994,20 @@
                 <button class="btn btn-success" onclick="openTaskModal()" id="createBtn" style="display: none;">
                     ➕ Create Task
                 </button>
-                <button class="btn btn-info" onclick="exportToPDF()">
-                    📄 Export PDF
+                <button class="btn toggle-section-btn" onclick="toggleExports()">
+                    <span id="exportToggleIcon">📤</span> Exports
                 </button>
-                <button class="btn btn-warning" onclick="exportToExcel()">
-                    📊 Export Excel
+                <button class="btn toggle-section-btn" onclick="toggleFilters()">
+                    <span id="filterToggleIcon">🔽</span> Filters
                 </button>
+                <div class="export-buttons" id="exportButtons">
+                    <button class="btn btn-info" onclick="exportToPDF()">
+                        📄 PDF
+                    </button>
+                    <button class="btn btn-warning" onclick="exportToExcel()">
+                        📊 Excel
+                    </button>
+                </div>
                 <button class="btn" onclick="loadTasks()">
                     ↻ Refresh
                 </button>
@@ -1252,13 +1290,17 @@
                 }
             });
 
+            loadToggleStates();
             loadTasks();
         }
 
         function signOut() {
-            // Clear remember me preference and token expiry
+            // Clear remember me preference and last sign in
             localStorage.removeItem('rememberMe');
-            localStorage.removeItem('tokenExpiry');
+            localStorage.removeItem('lastSignIn');
+            
+            // Also sign out from Google One Tap
+            google.accounts.id.disableAutoSelect();
             
             if (accessToken) {
                 google.accounts.oauth2.revoke(accessToken, () => {
@@ -1969,6 +2011,53 @@
             XLSX.utils.book_append_sheet(wb, ws, 'Tasks');
             
             XLSX.writeFile(wb, 'todo-list.xlsx');
+        }
+
+        // Toggle functions
+        function toggleExports() {
+            const exportButtons = document.getElementById('exportButtons');
+            const icon = document.getElementById('exportToggleIcon');
+            
+            if (exportButtons.classList.contains('hidden')) {
+                exportButtons.classList.remove('hidden');
+                icon.textContent = '📤';
+                localStorage.setItem('exportsVisible', 'true');
+            } else {
+                exportButtons.classList.add('hidden');
+                icon.textContent = '📥';
+                localStorage.setItem('exportsVisible', 'false');
+            }
+        }
+
+        function toggleFilters() {
+            const filterSection = document.getElementById('filterSection');
+            const icon = document.getElementById('filterToggleIcon');
+            
+            if (filterSection.classList.contains('collapsed')) {
+                filterSection.classList.remove('collapsed');
+                icon.textContent = '🔽';
+                localStorage.setItem('filtersVisible', 'true');
+            } else {
+                filterSection.classList.add('collapsed');
+                icon.textContent = '▶️';
+                localStorage.setItem('filtersVisible', 'false');
+            }
+        }
+
+        // Load saved toggle states
+        function loadToggleStates() {
+            const exportsVisible = localStorage.getItem('exportsVisible');
+            const filtersVisible = localStorage.getItem('filtersVisible');
+            
+            if (exportsVisible === 'false') {
+                document.getElementById('exportButtons').classList.add('hidden');
+                document.getElementById('exportToggleIcon').textContent = '📥';
+            }
+            
+            if (filtersVisible === 'false') {
+                document.getElementById('filterSection').classList.add('collapsed');
+                document.getElementById('filterToggleIcon').textContent = '▶️';
+            }
         }
 
         // Close modal when clicking outside
