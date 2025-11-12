@@ -130,6 +130,31 @@
     .modal-footer{padding:20px 25px;border-top:1px solid var(--border-color);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
     .btn-cancel{background:#6c757d}
     #mainContent{display:none}
+
+    /* Mobile FAB for Create Task */
+    .fab-create{
+      position: fixed;
+      right: 18px;
+      bottom: calc(18px + env(safe-area-inset-bottom, 0));
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: none;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: #fff;
+      background: linear-gradient(135deg,#4caf50 0%,#388e3c 100%);
+      box-shadow: 0 10px 24px rgba(0,0,0,.25);
+      z-index: 1200;
+      cursor: pointer;
+    }
+    .fab-create:active{ transform: translateY(1px); }
+    @media (max-width: 768px){
+      .fab-create.show{ display: flex; }
+    }
+
     @media (max-width:768px){
       .header{flex-direction:column;gap:10px}
       .header h1{font-size:1.5em}
@@ -272,7 +297,6 @@
             </div>
             <div class="form-group">
               <label for="taskCategorySelect">Category</label>
-              <!-- Populated from Sheets (unique categories in data) -->
               <select id="taskCategorySelect">
                 <option value="">(none)</option>
               </select>
@@ -292,7 +316,6 @@
 
           <div class="form-group">
             <label for="taskAssignedToSelect">Assign To</label>
-            <!-- Populated from Sheets (unique assignees in data) -->
             <select id="taskAssignedToSelect">
               <option value="">(unassigned)</option>
             </select>
@@ -330,18 +353,21 @@
     </div>
   </div>
 
+  <!-- Mobile floating Create button (admins only; shown via JS on small screens) -->
+  <button id="mobileCreateFab" class="fab-create" onclick="openTaskModal()" aria-label="Create Task" title="Create Task">➕</button>
+
   <!-- libs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <!-- App script with Remember Me + One Tap + dropdowns + time -->
+  <!-- App script -->
   <script>
 /* ============================
    Stable Remember Me + One Tap (first-time only)
-   - Dropdowns for Category and Assign To (from Sheet data)
-   - Optional Due Time saved as ISO (YYYY-MM-DDTHH:MM)
-   - Robust userinfo (no "undefined")
+   - Dropdowns for Category / Assign To from sheet data
+   - Optional Due Time saved as YYYY-MM-DD or YYYY-MM-DDTHH:MM
+   - Mobile FAB for Create (admins, small screens)
    ============================ */
 
 const CLIENT_ID = '429266563329-677t97fuhed0v47p5odrfog71qhcqdh6.apps.googleusercontent.com';
@@ -385,20 +411,22 @@ function parseJwt(token){
     return JSON.parse(jsonPayload||'{}');
   }catch(e){ return {}; }
 }
-// parse due date string that may contain time
 function parseDue(dueStr){
   if(!dueStr) return null;
-  // Accept 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:MM'
-  const iso = dueStr.includes('T') ? dueStr : dueStr; // both fine
-  const d = new Date(iso);
+  const d = new Date(dueStr);
   return isNaN(d.getTime()) ? null : d;
 }
 function formatDueDisplay(dueStr){
   if(!dueStr) return '';
   const d = parseDue(dueStr);
   if(!d) return dueStr;
-  const hasTime = dueStr.includes('T');
-  return hasTime ? d.toLocaleString() : d.toLocaleDateString();
+  return dueStr.includes('T') ? d.toLocaleString() : d.toLocaleDateString();
+}
+function uniqueNonEmpty(list){ return [...new Set(list.filter(Boolean))]; }
+function toggleMobileFab(show){
+  const fab = document.getElementById('mobileCreateFab');
+  if (!fab) return;
+  fab.classList.toggle('show', !!show);
 }
 
 // ---------- Loaders ----------
@@ -458,7 +486,7 @@ function handleOneTapCredential(response){
   const name    = payload.name || payload.given_name || '';
   const picture = payload.picture || '';
 
-  // show provisional UI
+  // provisional header UI
   setHeaderUserUI({ name, email, picture });
 
   if(email){ localStorage.setItem('loginHint', email); }
@@ -513,7 +541,16 @@ function onSignInSuccess(){
       }
       isAdmin = !!data?.email && ADMIN_EMAILS.includes(data.email.toLowerCase());
 
+      // header UI
       setHeaderUserUI({ name: displayName, email: data.email, picture, isAdmin });
+
+      // desktop Create button
+      const createButton = document.getElementById('createBtn');
+      if(createButton) createButton.style.display = isAdmin ? 'inline-flex' : 'none';
+
+      // mobile FAB
+      toggleMobileFab(isAdmin);
+
       loadToggleStates();
       loadTasks();
     })
@@ -557,6 +594,7 @@ function showLogin(){
   document.getElementById('loginScreen').style.display = 'block';
   document.getElementById('mainContent').style.display = 'none';
   document.getElementById('userInfo').style.display = 'none';
+  toggleMobileFab(false);
 }
 
 // ---------- Sheets + UI ----------
@@ -586,7 +624,6 @@ async function loadTasks(){
       comments: row[12]||''
     })).filter(t=>!t.completed);
 
-    // sort by priority then due date/time
     const order = {High:1, Medium:2, Low:3};
     allTasks.sort((a,b)=>{
       const p = (order[a.priority]||99)-(order[b.priority]||99);
@@ -600,7 +637,6 @@ async function loadTasks(){
 
     tasks=[...allTasks];
 
-    // Populate filters and form dropdowns from live data
     populateFilters();
     populateFormLists();
 
@@ -610,8 +646,6 @@ async function loadTasks(){
     todoList.innerHTML = `<div class="error">Error loading tasks: ${err.message}</div>`;
   }
 }
-
-function uniqueNonEmpty(list){ return [...new Set(list.filter(Boolean))]; }
 
 function populateFilters(){
   const creators=uniqueNonEmpty(allTasks.map(t=>t.createdBy));
@@ -625,7 +659,6 @@ function populateFilters(){
   assignedSelect.innerHTML='<option value="all">All</option>'+assignees.map(a=>`<option value="${a}">${a}</option>`).join('');
 }
 
-// NEW: Populate Category/AssignTo dropdowns in the Task Modal from Sheet data
 function populateFormLists(selected = {}){
   const categories=uniqueNonEmpty(allTasks.map(t=>t.category));
   const assignees=uniqueNonEmpty(allTasks.map(t=>t.assignedTo));
@@ -702,7 +735,7 @@ function isOverdue(dueStr){
   const d = parseDue(dueStr);
   if(!d) return false;
   const now = new Date();
-  return d < now.setHours(0,0,0,0); // overdue if strictly before today
+  return d < now.setHours(0,0,0,0);
 }
 
 function renderTasks(){
@@ -797,7 +830,6 @@ function openTaskModal(){
   if(!isAdmin) return alert('Only administrators can create tasks.');
   editingTaskId=null; document.getElementById('modalTitle').textContent='Create New Task';
   document.getElementById('taskForm').reset();
-  // ensure dropdowns reflect latest data
   populateFormLists();
   notificationEmails=[]; uploadedFiles=[];
   document.getElementById('emailTags').innerHTML=''; document.getElementById('fileList').innerHTML='';
@@ -815,10 +847,8 @@ function openEditTask(taskId){
   document.getElementById('taskDescription').value=t.description;
   document.getElementById('taskPriority').value=t.priority;
 
-  // prepare dropdowns with current selections
   populateFormLists({ category: t.category || '', assignedTo: t.assignedTo || '' });
 
-  // due date + optional time
   if(t.dueDate){
     const hasTime = t.dueDate.includes('T');
     if(hasTime){
@@ -864,7 +894,6 @@ async function saveTask(e){
 
   if(!title) return alert('Please enter a task title!');
 
-  // combine date + time to ISO if time is given (store in the Due Date column)
   const dueValue = dueDate ? (dueTime ? `${dueDate}T${dueTime}` : dueDate) : '';
 
   try{
@@ -955,7 +984,7 @@ function renderFileList(){
 }
 function removeFile(i){ uploadedFiles.splice(i,1); renderFileList(); }
 
-// DnD
+// Drag & drop
 const fileUploadArea=document.getElementById('fileUploadArea');
 if(fileUploadArea){
   fileUploadArea.addEventListener('dragover',e=>{ e.preventDefault(); fileUploadArea.classList.add('dragover'); });
@@ -1058,7 +1087,6 @@ setInterval(()=>{ if(accessToken) loadTasks(); }, 120000);
 
   <!-- Google APIs last -->
   <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-  <!-- The GSI client provides BOTH oauth2 token client and One Tap ID client -->
   <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded(); gsiIdLoaded();"></script>
 </body>
 </html>
