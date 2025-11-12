@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Interactive To-Do List</title>
+  <title>Theatre To-Do List</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     :root{--primary-gradient:linear-gradient(135deg,#667eea 0%,#764ba2 100%);--bg-light:#f8f9fa;--border-color:#e9ecef;--text-primary:#333;--text-secondary:#666}
@@ -24,7 +24,7 @@
     .dark-mode-toggle{background:rgba(255,255,255,.2);border:none;color:#fff;padding:8px 12px;border-radius:20px;cursor:pointer;font-size:1.2em;transition:background .3s}
     .dark-mode-toggle:hover{background:rgba(255,255,255,.3)}
     .user-info{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.2);padding:8px 12px;border-radius:25px;font-size:.85em}
-    .user-avatar{width:32px;height:32px;border-radius:50%;border:2px solid #fff}
+    .user-avatar{width:32px;height:32px;border-radius:50%;border:2px solid #fff;object-fit:cover}
     .sign-out-btn{background:rgba(255,255,255,.3);color:#fff;border:none;padding:6px 12px;border-radius:15px;cursor:pointer;font-size:.85em;transition:background .3s}
     .sign-out-btn:hover{background:rgba(255,255,255,.4)}
     .login-screen{padding:60px 30px;text-align:center}
@@ -160,7 +160,7 @@
   <div class="container">
     <div class="header">
       <div class="header-left">
-        <h1>📋 Team To-Do List</h1>
+        <h1>🎭 Theatre To-Do List</h1>
         <p>Connected to Google Sheets</p>
       </div>
       <div class="header-right">
@@ -174,7 +174,7 @@
     </div>
 
     <div class="login-screen" id="loginScreen">
-      <h2>Welcome to Team To-Do List</h2>
+      <h2>Welcome to Theatre To-Do List</h2>
       <p>Sign in with Google to view and manage your team's tasks</p>
       <button class="google-signin-btn" onclick="handleSignIn()">
         <svg class="google-icon" viewBox="0 0 24 24">
@@ -320,7 +320,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <!-- App script with Remember Me + One Tap (first-time only) -->
+  <!-- App script with Remember Me + One Tap -->
   <script>
 /* ============================
    Stable Remember Me + One Tap (first-time only)
@@ -331,12 +331,18 @@
        * NOT remembered
        * No stored loginHint
        * Not already signed in
+   - FIX: include userinfo scopes to avoid undefined name/picture
    ============================ */
 
 const CLIENT_ID = '429266563329-677t97fuhed0v47p5odrfog71qhcqdh6.apps.googleusercontent.com';
 const API_KEY   = 'AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A';
 const SHEET_ID  = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
-const SCOPES    = 'https://www.googleapis.com/auth/spreadsheets';
+const SCOPES    = [
+  'https://www.googleapis.com/auth/spreadsheets',
+  'https://www.googleapis.com/auth/userinfo.email',
+  'https://www.googleapis.com/auth/userinfo.profile',
+  'openid'
+].join(' ');
 
 const ADMIN_EMAILS = ['myork@culver.edu','hheaton@culver.edu','dlane@culver.edu'];
 
@@ -362,12 +368,12 @@ function isSecureContextForOneTap(){
   return location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 }
 function parseJwt(token){
-  // decode without verification (client-side convenience for email hint)
-  const base64Url = token.split('.')[1];
-  if(!base64Url) return {};
-  const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
-  const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-  return JSON.parse(jsonPayload || '{}');
+  try{
+    const base64Url = token.split('.')[1]; if(!base64Url) return {};
+    const base64 = base64Url.replace(/-/g,'+').replace(/_/g,'/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+    return JSON.parse(jsonPayload||'{}');
+  }catch(e){ return {}; }
 }
 
 // ---------- Loaders ----------
@@ -386,10 +392,7 @@ function gisLoaded(){
   gisReady = true;
   tryStartAuthFlow();
 }
-function gsiIdLoaded(){ // called by the same gsi/client loader
-  oneTapReady = true;
-  tryStartAuthFlow();
-}
+function gsiIdLoaded(){ oneTapReady = true; tryStartAuthFlow(); }
 
 // ---------- Bootstrap auth decision ----------
 function tryStartAuthFlow(){
@@ -399,17 +402,13 @@ function tryStartAuthFlow(){
   const loginHint = localStorage.getItem('loginHint') || '';
 
   if(remembered){
-    // attempt silent OAuth with hint
     tokenClient.requestAccessToken({ prompt: '', login_hint: loginHint || undefined });
     return;
   }
 
-  // no rememberMe: show One Tap once per session if conditions allow
   const oneTapShown = sessionStorage.getItem('oneTapShown') === 'true';
   if(!oneTapShown && isSecureContextForOneTap()){
     initAndPromptOneTap();
-  } else {
-    // show regular login screen (default UI already visible)
   }
 }
 
@@ -425,43 +424,37 @@ function initAndPromptOneTap(){
     context: 'signin'
   });
 
-  // Prevent re-render if hidden by browser policy; no loop.
-  google.accounts.id.prompt((notification) => {
-    // notification types logged for debugging (optional)
-    // console.log('One Tap status:', notification.getMomentType?.(), notification.getNotDisplayedReason?.(), notification.getSkippedReason?.());
-  });
+  google.accounts.id.prompt(() => {});
 }
 
 function handleOneTapCredential(response){
-  // response.credential is a Google ID token; decode to get email for login_hint
   const payload = parseJwt(response.credential || '');
-  const email = (payload && payload.email) ? String(payload.email).toLowerCase() : '';
-  if(email){
-    localStorage.setItem('loginHint', email);
-  }
-  // Exchange for Sheets OAuth token silently (no UI)
+  const email   = (payload && payload.email) ? String(payload.email).toLowerCase() : '';
+  const name    = payload.name || payload.given_name || '';
+  const picture = payload.picture || '';
+
+  // show provisional UI right away
+  setHeaderUserUI({ name, email, picture });
+
+  if(email){ localStorage.setItem('loginHint', email); }
   tokenClient.requestAccessToken({ prompt: '', login_hint: email || undefined });
 }
 
 // ---------- OAuth flow ----------
 function onTokenResponse(rsp){
   if(rsp && rsp.error){
-    // Failed silent request; show login UI
     showLogin();
     return;
   }
   accessToken = rsp.access_token;
-
-  // schedule silent refresh about 45 minutes later
   scheduleTokenRefresh(45*60*1000);
-
   onSignInSuccess();
 }
 
 function scheduleTokenRefresh(ms){
   clearTimeout(refreshTimer);
   const remembered = localStorage.getItem('rememberMe') === 'true';
-  if(!remembered) return; // only keep-alive for remembered sessions
+  if(!remembered) return;
   const hint = localStorage.getItem('loginHint') || '';
   refreshTimer = setTimeout(() => {
     tokenClient.requestAccessToken({ prompt: '', login_hint: hint || undefined });
@@ -480,27 +473,23 @@ function handleSignIn(){
 }
 
 function onSignInSuccess(){
-  // swap UI
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('mainContent').style.display = 'block';
 
-  // fetch profile + set loginHint for next time if remembered
   fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${accessToken}` }})
     .then(r=>r.json())
     .then(data=>{
-      currentUser = data;
+      // Build robust display values
+      const displayName = data.name || data.given_name || (data.email ? data.email.split('@')[0] : 'User');
+      const picture = data.picture || '';
+
+      currentUser = { ...data, name: displayName, picture };
       if(localStorage.getItem('rememberMe') === 'true' && data?.email){
         localStorage.setItem('loginHint', data.email.toLowerCase());
       }
       isAdmin = !!data?.email && ADMIN_EMAILS.includes(data.email.toLowerCase());
 
-      // header UI
-      document.getElementById('userName').textContent = data.name + (isAdmin ? ' (Admin)' : '');
-      document.getElementById('userAvatar').src = data.picture;
-      document.getElementById('userInfo').style.display = 'flex';
-      const createButton = document.getElementById('createBtn');
-      if(createButton) createButton.style.display = isAdmin ? 'inline-flex' : 'none';
-
+      setHeaderUserUI({ name: displayName, email: data.email, picture, isAdmin });
       loadToggleStates();
       loadTasks();
     })
@@ -508,6 +497,21 @@ function onSignInSuccess(){
       console.error('userinfo error:', err);
       showLogin();
     });
+}
+
+function setHeaderUserUI({ name='', email='', picture='', isAdmin=false }={}){
+  const nameEl = document.getElementById('userName');
+  const avatar = document.getElementById('userAvatar');
+  const display = name || (email ? email.split('@')[0] : 'User');
+  nameEl.textContent = display + (isAdmin ? ' (Admin)' : '');
+  if(picture){
+    avatar.src = picture;
+    avatar.style.display = 'block';
+  }else{
+    // hide image if none to avoid broken icon
+    avatar.style.display = 'none';
+  }
+  document.getElementById('userInfo').style.display = 'flex';
 }
 
 function signOut(){
@@ -881,16 +885,16 @@ if(localStorage.getItem('darkMode')==='true'){
 // Exports
 function exportToPDF(){
   const { jsPDF } = window.jspdf; const doc=new jsPDF();
-  doc.setFontSize(18); doc.text('Team To-Do List',14,20);
+  doc.setFontSize(18); doc.text('Theatre To-Do List',14,20);
   doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`,14,28);
   doc.text(`Total Tasks: ${tasks.length}`,14,34);
   const tableData=tasks.map(t=>[t.task,t.priority,t.category||'N/A',t.assignedTo||'Unassigned',t.dueDate||'No due date',t.createdBy]);
   doc.autoTable({ head:[['Task','Priority','Category','Assigned To','Due Date','Created By']], body:tableData, startY:40, styles:{fontSize:8}, headStyles:{fillColor:[102,126,234]}});
-  doc.save('todo-list.pdf');
+  doc.save('theatre-todo-list.pdf');
 }
 function exportToExcel(){
   const data=tasks.map(t=>({'Task':t.task,'Description':t.description,'Priority':t.priority,'Category':t.category||'','Created By':t.createdBy,'Assigned To':t.assignedTo||'','Due Date':t.dueDate||'','Notify':t.notify?'Yes':'No'}));
-  const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Tasks'); XLSX.writeFile(wb,'todo-list.xlsx');
+  const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Tasks'); XLSX.writeFile(wb,'theatre-todo-list.xlsx');
 }
 
 // UI toggles
