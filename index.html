@@ -314,11 +314,11 @@
             </div>
           </div>
 
+          <!-- REPLACED: Select -> Input + Datalist for cross-device add & pick -->
           <div class="form-group">
-            <label for="taskAssignedToSelect">Assign To</label>
-            <select id="taskAssignedToSelect">
-              <option value="">(unassigned)</option>
-            </select>
+            <label for="taskAssignedToInput">Assign To</label>
+            <input type="text" id="taskAssignedToInput" list="assignList" placeholder="Type a name or pick"/>
+            <datalist id="assignList"></datalist>
           </div>
 
           <div class="form-group">
@@ -365,7 +365,7 @@
   <script>
 /* ============================
    Stable Remember Me + One Tap (first-time only)
-   - Dropdowns for Category / Assign To from sheet data
+   - Dropdown (Category) & type-ahead (Assign To) from sheet data
    - Optional Due Time saved as YYYY-MM-DD or YYYY-MM-DDTHH:MM
    - Mobile FAB for Create (admins, small screens)
    ============================ */
@@ -659,17 +659,23 @@ function populateFilters(){
   assignedSelect.innerHTML='<option value="all">All</option>'+assignees.map(a=>`<option value="${a}">${a}</option>`).join('');
 }
 
+// Populate Category dropdown + AssignTo datalist in the Task Modal from Sheet data
 function populateFormLists(selected = {}){
   const categories=uniqueNonEmpty(allTasks.map(t=>t.category));
   const assignees=uniqueNonEmpty(allTasks.map(t=>t.assignedTo));
+
+  // Category select
   const catSel = document.getElementById('taskCategorySelect');
-  const asgSel = document.getElementById('taskAssignedToSelect');
-
   catSel.innerHTML = '<option value="">(none)</option>' + categories.map(c=>`<option value="${c}">${c}</option>`).join('');
-  asgSel.innerHTML = '<option value="">(unassigned)</option>' + assignees.map(a=>`<option value="${a}">${a}</option>`).join('');
-
   if(selected.category) catSel.value = selected.category;
-  if(selected.assignedTo) asgSel.value = selected.assignedTo;
+
+  // Assign To datalist
+  const dl = document.getElementById('assignList');
+  dl.innerHTML = assignees.map(a => `<option value="${a}"></option>`).join('');
+
+  // If editing with a value, set input value
+  const asgInput = document.getElementById('taskAssignedToInput');
+  if(selected.assignedTo) asgInput.value = selected.assignedTo;
 }
 
 function applyFilters(){
@@ -830,7 +836,7 @@ function openTaskModal(){
   if(!isAdmin) return alert('Only administrators can create tasks.');
   editingTaskId=null; document.getElementById('modalTitle').textContent='Create New Task';
   document.getElementById('taskForm').reset();
-  populateFormLists();
+  populateFormLists(); // latest lists (including assignees)
   notificationEmails=[]; uploadedFiles=[];
   document.getElementById('emailTags').innerHTML=''; document.getElementById('fileList').innerHTML='';
   document.getElementById('emailInputGroup').classList.remove('active');
@@ -888,7 +894,10 @@ async function saveTask(e){
   const category=document.getElementById('taskCategorySelect').value.trim();
   const dueDate=document.getElementById('taskDueDate').value;
   const dueTime=document.getElementById('taskDueTime').value;
-  const assignedTo=document.getElementById('taskAssignedToSelect').value.trim();
+
+  // NEW: grab from input (free text OR suggestion)
+  const assignedTo=document.getElementById('taskAssignedToInput').value.trim();
+
   const notify=document.getElementById('enableNotifications').checked;
   const emails=notificationEmails.join(',');
 
