@@ -1,2083 +1,825 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive To-Do List</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --bg-light: #f8f9fa;
-            --border-color: #e9ecef;
-            --text-primary: #333;
-            --text-secondary: #666;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--primary-gradient);
-            min-height: 100vh;
-            padding: 10px;
-            transition: background 0.3s;
-        }
-
-        body.dark-mode {
-            --bg-light: #2d3436;
-            --border-color: #4a4a4a;
-            --text-primary: #f8f9fa;
-            --text-secondary: #dfe6e9;
-            background: linear-gradient(135deg, #2d3436 0%, #1e272e 100%);
-        }
-
-        body.dark-mode .container {
-            background: #1e272e;
-        }
-
-        body.dark-mode .todo-item {
-            background: #2d3436;
-            color: var(--text-primary);
-        }
-
-        body.dark-mode .modal-content {
-            background: #2d3436;
-            color: var(--text-primary);
-        }
-
-        body.dark-mode input,
-        body.dark-mode textarea,
-        body.dark-mode select {
-            background: #1e272e;
-            color: var(--text-primary);
-            border-color: #4a4a4a;
-        }
-
-        body.dark-mode .filter-section {
-            background: #2d3436;
-        }
-
-        body.dark-mode .comment {
-            background: #1e272e;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-        }
-
-        .header {
-            background: var(--primary-gradient);
-            color: white;
-            padding: 20px;
-            text-align: center;
-            position: relative;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        .header-left {
-            flex: 1;
-        }
-
-        .header h1 {
-            font-size: 2em;
-            margin-bottom: 5px;
-        }
-
-        .header p {
-            font-size: 0.9em;
-            opacity: 0.9;
-        }
-
-        .header-right {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .dark-mode-toggle {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 1.2em;
-            transition: background 0.3s;
-        }
-
-        .dark-mode-toggle:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(255, 255, 255, 0.2);
-            padding: 8px 12px;
-            border-radius: 25px;
-            font-size: 0.85em;
-        }
-
-        .user-avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border: 2px solid white;
-        }
-
-        .sign-out-btn {
-            background: rgba(255, 255, 255, 0.3);
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 15px;
-            cursor: pointer;
-            font-size: 0.85em;
-            transition: background 0.3s;
-        }
-
-        .sign-out-btn:hover {
-            background: rgba(255, 255, 255, 0.4);
-        }
-
-        .login-screen {
-            padding: 60px 30px;
-            text-align: center;
-        }
-
-        .login-screen h2 {
-            color: var(--text-primary);
-            margin-bottom: 20px;
-            font-size: 2em;
-        }
-
-        .login-screen p {
-            color: var(--text-secondary);
-            margin-bottom: 30px;
-            font-size: 1.1em;
-        }
-
-        .remember-me {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin: 20px 0;
-            font-size: 0.95em;
-            color: var(--text-secondary);
-        }
-
-        .remember-me input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-
-        .remember-me label {
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .google-signin-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            background: white;
-            color: #444;
-            border: 2px solid #ddd;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .google-signin-btn:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            transform: translateY(-2px);
-        }
-
-        .google-icon {
-            width: 24px;
-            height: 24px;
-        }
-
-        .action-bar {
-            padding: 20px;
-            background: var(--bg-light);
-            border-bottom: 2px solid var(--border-color);
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .export-buttons {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            transition: all 0.3s ease;
-        }
-
-        .export-buttons.hidden {
-            display: none;
-        }
-
-        .toggle-section-btn {
-            background: #6c757d;
-            padding: 8px 16px;
-            font-size: 0.9em;
-        }
-
-        .toggle-section-btn:hover {
-            background: #5a6268;
-        }
-
-        .search-box {
-            flex: 1;
-            min-width: 200px;
-            padding: 10px 15px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 0.95em;
-        }
-
-        .btn {
-            background: var(--primary-gradient);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 0.95em;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #f44336 0%, #c62828 100%);
-        }
-
-        .btn-warning {
-            background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-        }
-
-        .btn-info {
-            background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%);
-        }
-
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 0.85em;
-        }
-
-        .filter-section {
-            padding: 15px 20px;
-            background: white;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            align-items: center;
-            transition: all 0.3s ease;
-            overflow: hidden;
-            max-height: 200px;
-        }
-
-        .filter-section.collapsed {
-            max-height: 0;
-            padding: 0 20px;
-            border-bottom: none;
-        }
-
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .filter-group label {
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-size: 0.9em;
-        }
-
-        .filter-group select {
-            padding: 6px 10px;
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 0.85em;
-        }
-
-        .todo-list {
-            padding: 20px;
-            max-height: 600px;
-            overflow-y: auto;
-        }
-
-        .todo-item {
-            background: var(--bg-light);
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            transition: all 0.3s;
-            position: relative;
-        }
-
-        .todo-item:hover {
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-            transform: translateX(5px);
-        }
-
-        .todo-item.priority-high {
-            border-left-color: #f44336;
-            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
-        }
-
-        .todo-item.priority-medium {
-            border-left-color: #ff9800;
-            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
-        }
-
-        .todo-item.priority-low {
-            border-left-color: #2196f3;
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-        }
-
-        body.dark-mode .todo-item.priority-high {
-            background: linear-gradient(135deg, #5d1f1f 0%, #7f2c2c 100%);
-        }
-
-        body.dark-mode .todo-item.priority-medium {
-            background: linear-gradient(135deg, #5d4a1f 0%, #7f6419 100%);
-        }
-
-        body.dark-mode .todo-item.priority-low {
-            background: linear-gradient(135deg, #1f3d5d 0%, #2c5f7f 100%);
-        }
-
-        .todo-item-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .todo-item-left {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            flex: 1;
-        }
-
-        .checkbox {
-            width: 22px;
-            height: 22px;
-            cursor: pointer;
-            accent-color: #667eea;
-            flex-shrink: 0;
-            margin-top: 2px;
-        }
-
-        .todo-content {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .todo-title-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 4px;
-            flex-wrap: wrap;
-        }
-
-        .todo-title {
-            font-size: 1.05em;
-            font-weight: 600;
-            color: var(--text-primary);
-            word-break: break-word;
-        }
-
-        .badge {
-            padding: 3px 10px;
-            border-radius: 12px;
-            font-size: 0.7em;
-            font-weight: bold;
-            text-transform: uppercase;
-            white-space: nowrap;
-        }
-
-        .priority-badge.priority-high {
-            background: #f44336;
-            color: white;
-        }
-
-        .priority-badge.priority-medium {
-            background: #ff9800;
-            color: white;
-        }
-
-        .priority-badge.priority-low {
-            background: #2196f3;
-            color: white;
-        }
-
-        .notification-badge {
-            background: #9c27b0;
-            color: white;
-        }
-
-        .category-badge {
-            background: #00bcd4;
-            color: white;
-        }
-
-        .overdue-badge {
-            background: #f44336;
-            color: white;
-        }
-
-        .todo-description {
-            color: var(--text-secondary);
-            font-size: 0.85em;
-            margin-bottom: 8px;
-            word-break: break-word;
-        }
-
-        .todo-meta {
-            display: flex;
-            gap: 12px;
-            font-size: 0.8em;
-            color: var(--text-secondary);
-            flex-wrap: wrap;
-            margin-bottom: 8px;
-        }
-
-        .meta-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            white-space: nowrap;
-        }
-
-        .todo-actions {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-
-        .todo-item-right {
-            display: flex;
-            gap: 6px;
-            flex-shrink: 0;
-            flex-wrap: wrap;
-        }
-
-        .initials-input {
-            width: 90px;
-            padding: 6px;
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            text-align: center;
-            text-transform: uppercase;
-            font-weight: bold;
-            font-size: 0.9em;
-        }
-
-        .comments-section {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .comment {
-            background: white;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            font-size: 0.85em;
-        }
-
-        .comment-author {
-            font-weight: 600;
-            color: #667eea;
-            margin-bottom: 4px;
-        }
-
-        .comment-text {
-            color: var(--text-secondary);
-        }
-
-        .comment-input-group {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .comment-input {
-            flex: 1;
-            padding: 8px;
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 0.85em;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: var(--text-secondary);
-            font-size: 1.1em;
-        }
-
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px;
-        }
-
-        .success {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 10px 15px;
-            border-radius: 6px;
-            margin: 10px 0;
-            font-size: 0.9em;
-            text-align: center;
-        }
-
-        .stats {
-            display: flex;
-            gap: 15px;
-            padding: 15px 20px;
-            background: var(--primary-gradient);
-            color: white;
-        }
-
-        .stat-item {
-            flex: 1;
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 1.8em;
-            font-weight: bold;
-        }
-
-        .stat-label {
-            font-size: 0.85em;
-            opacity: 0.9;
-        }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            animation: fadeIn 0.3s;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .modal-content {
-            background-color: white;
-            margin: 2% auto;
-            padding: 0;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 700px;
-            max-height: 90vh;
-            overflow-y: auto;
-            animation: slideIn 0.3s;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateY(-50px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .modal-header {
-            background: var(--primary-gradient);
-            color: white;
-            padding: 20px;
-            border-radius: 12px 12px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-header h2 {
-            margin: 0;
-            font-size: 1.5em;
-        }
-
-        .close {
-            color: white;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            line-height: 1;
-            transition: transform 0.2s;
-        }
-
-        .close:hover {
-            transform: scale(1.2);
-        }
-
-        .modal-body {
-            padding: 25px;
-            max-height: calc(90vh - 180px);
-            overflow-y: auto;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .form-group input,
-        .form-group textarea,
-        .form-group select {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid var(--border-color);
-            border-radius: 6px;
-            font-size: 1em;
-            font-family: inherit;
-            transition: border-color 0.3s;
-        }
-
-        .form-group input:focus,
-        .form-group textarea:focus,
-        .form-group select:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .form-group textarea {
-            resize: vertical;
-            min-height: 80px;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px;
-            background: var(--bg-light);
-            border-radius: 6px;
-        }
-
-        .checkbox-group input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            cursor: pointer;
-        }
-
-        .checkbox-group label {
-            margin: 0;
-            cursor: pointer;
-            font-weight: normal;
-        }
-
-        .notification-info {
-            background: #e3f2fd;
-            padding: 12px;
-            border-radius: 6px;
-            margin-top: 10px;
-            font-size: 0.9em;
-            color: #1976d2;
-        }
-
-        body.dark-mode .notification-info {
-            background: #1a237e;
-            color: #90caf9;
-        }
-
-        .email-input-group {
-            display: none;
-            margin-top: 10px;
-        }
-
-        .email-input-group.active {
-            display: block;
-        }
-
-        .email-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 8px;
-        }
-
-        .email-tag {
-            background: #667eea;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
-        .email-tag .remove {
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .file-upload-area {
-            border: 2px dashed var(--border-color);
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            background: var(--bg-light);
-        }
-
-        .file-upload-area:hover {
-            border-color: #667eea;
-        }
-
-        .file-upload-area.dragover {
-            border-color: #667eea;
-            background: #e3f2fd;
-        }
-
-        .file-list {
-            margin-top: 10px;
-        }
-
-        .file-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px;
-            background: var(--bg-light);
-            border-radius: 6px;
-            margin-bottom: 6px;
-            font-size: 0.85em;
-        }
-
-        .file-item-name {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .file-item-remove {
-            cursor: pointer;
-            color: #f44336;
-            font-weight: bold;
-            padding: 0 8px;
-        }
-
-        .modal-footer {
-            padding: 20px 25px;
-            border-top: 1px solid var(--border-color);
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            flex-wrap: wrap;
-        }
-
-        .btn-cancel {
-            background: #6c757d;
-        }
-
-        #mainContent {
-            display: none;
-        }
-
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .header h1 {
-                font-size: 1.5em;
-            }
-
-            .header-right {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .action-bar {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .search-box {
-                width: 100%;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-
-            .filter-section {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .filter-group {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .filter-group select {
-                width: 100%;
-            }
-
-            .stats {
-                flex-direction: column;
-                gap: 10px;
-            }
-
-            .todo-item-header {
-                flex-direction: column;
-            }
-
-            .todo-item-right {
-                width: 100%;
-                justify-content: flex-start;
-            }
-
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .modal-content {
-                width: 95%;
-                margin: 10px auto;
-            }
-
-            .modal-footer {
-                flex-direction: column;
-            }
-
-            .modal-footer .btn {
-                width: 100%;
-            }
-        }
-
-        @media (max-width: 480px) {
-            body {
-                padding: 5px;
-            }
-
-            .container {
-                border-radius: 10px;
-            }
-
-            .header {
-                padding: 15px;
-            }
-
-            .action-bar, .filter-section, .todo-list {
-                padding: 15px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="header-left">
-                <h1>📋 Team To-Do List</h1>
-                <p>Connected to Google Sheets</p>
-            </div>
-            <div class="header-right">
-                <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
-                <div class="user-info" id="userInfo" style="display: none;">
-                    <img id="userAvatar" class="user-avatar" alt="User">
-                    <span id="userName"></span>
-                    <button class="sign-out-btn" onclick="signOut()">Sign Out</button>
+<script>
+/* ============================
+   Google Sheets To-Do — Stable “Remember Me”
+   - Silent sign-in with login_hint + prompt:''
+   - Scheduled silent refresh
+   - No One Tap loops
+   ============================ */
+
+const CLIENT_ID = '429266563329-677t97fuhed0v47p5odrfog71qhcqdh6.apps.googleusercontent.com';
+const API_KEY   = 'AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A';
+const SHEET_ID  = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
+const SCOPES    = 'https://www.googleapis.com/auth/spreadsheets';
+
+const ADMIN_EMAILS = [
+  'myork@culver.edu',
+  'hheaton@culver.edu',
+  'dlane@culver.edu'
+];
+
+// ---- Auth state ----
+let tokenClient;
+let accessToken = null;
+let currentUser = null;
+let isAdmin = false;
+let gapiReady = false;
+let gisReady  = false;
+let refreshTimer = null;  // token refresh timeout
+
+// ---- App state (unchanged pieces you already use) ----
+let tasks = [];
+let allTasks = [];
+let notificationEmails = [];
+let uploadedFiles = [];
+let editingTaskId = null;
+let taskComments = {};
+
+// ========== LOADERS ==========
+function gapiLoaded() {
+  gapi.load('client', initializeGapiClient);
+}
+
+async function initializeGapiClient() {
+  await gapi.client.init({
+    apiKey: API_KEY,
+    discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
+  });
+  gapiReady = true;
+  maybeAutoSignIn();  // try silent sign-in if allowed
+}
+
+function gisLoaded() {
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: onTokenResponse
+  });
+  gisReady = true;
+  maybeAutoSignIn();  // try silent sign-in if allowed
+}
+
+// ========== REMEMBER ME CORE ==========
+function maybeAutoSignIn() {
+  // Only run when both libs are ready
+  if (!gapiReady || !gisReady) return;
+
+  const rememberMe = localStorage.getItem('rememberMe') === 'true';
+  if (!rememberMe) return;
+
+  // Use stored email as login_hint to avoid extra prompts
+  const loginHint = localStorage.getItem('loginHint') || '';
+
+  // Silent token request – will succeed if the user still has an active Google session on this browser.
+  tokenClient.requestAccessToken({
+    prompt: '',         // <-- critical: no UI if session exists
+    login_hint: loginHint || undefined
+  });
+}
+
+function onTokenResponse(response) {
+  if (response && response.error) {
+    // If we cannot get a silent token, show login screen
+    console.warn('Token error:', response.error);
+    showLogin();
+    return;
+  }
+
+  accessToken = response.access_token;
+
+  // Schedule silent refresh ~45 minutes later (Google tokens are ~3600s)
+  scheduleTokenRefresh(45 * 60 * 1000);
+
+  // Proceed to app (fetch user, render, etc.)
+  onSignInSuccess();
+}
+
+function scheduleTokenRefresh(ms) {
+  clearTimeout(refreshTimer);
+  const rememberMe = localStorage.getItem('rememberMe') === 'true';
+  if (!rememberMe) return; // don’t keep refreshing if they didn’t opt in
+
+  const loginHint = localStorage.getItem('loginHint') || '';
+  refreshTimer = setTimeout(() => {
+    // Re-request a token silently; if session is gone, show login
+    tokenClient.requestAccessToken({
+      prompt: '',
+      login_hint: loginHint || undefined
+    });
+  }, ms);
+}
+
+// ========== USER FLOWS ==========
+function handleSignIn() {
+  const rememberChecked = document.getElementById('rememberMe')?.checked !== false;
+  if (rememberChecked) {
+    localStorage.setItem('rememberMe', 'true');
+  } else {
+    localStorage.removeItem('rememberMe');
+    localStorage.removeItem('loginHint');
+  }
+
+  // First sign-in must allow UI prompt
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
+
+function onSignInSuccess() {
+  // Hide login UI, show app UI
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('mainContent').style.display = 'block';
+
+  // Fetch user info to know who they are + store login_hint for next silent sign-in
+  fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  })
+  .then(r => r.json())
+  .then(data => {
+    currentUser = data;
+    if (localStorage.getItem('rememberMe') === 'true' && data?.email) {
+      localStorage.setItem('loginHint', data.email.toLowerCase());
+    }
+
+    isAdmin = !!data?.email && ADMIN_EMAILS.includes(data.email.toLowerCase());
+
+    // UI
+    document.getElementById('userName').textContent = data.name + (isAdmin ? ' (Admin)' : '');
+    document.getElementById('userAvatar').src = data.picture;
+    document.getElementById('userInfo').style.display = 'flex';
+
+    const createButton = document.getElementById('createBtn');
+    if (createButton) createButton.style.display = isAdmin ? 'inline-flex' : 'none';
+
+    loadToggleStates();
+    loadTasks();
+  })
+  .catch(err => {
+    console.error('userinfo error:', err);
+    showLogin();
+  });
+}
+
+function signOut() {
+  // Clear local prefs
+  localStorage.removeItem('rememberMe');
+  localStorage.removeItem('loginHint');
+  clearTimeout(refreshTimer);
+
+  // Prevent auto-select reuse
+  try { google.accounts.id.disableAutoSelect(); } catch (e) {}
+
+  if (accessToken) {
+    google.accounts.oauth2.revoke(accessToken, () => {
+      accessToken = null;
+      currentUser = null;
+      isAdmin = false;
+      showLogin();
+    });
+  } else {
+    showLogin();
+  }
+}
+
+function showLogin() {
+  accessToken = null;
+  currentUser = null;
+  isAdmin = false;
+  clearTimeout(refreshTimer);
+
+  document.getElementById('loginScreen').style.display = 'block';
+  document.getElementById('mainContent').style.display = 'none';
+  document.getElementById('userInfo').style.display = 'none';
+}
+
+// ========== THE REST OF YOUR APP LOGIC (unchanged) ==========
+// Load tasks from Google Sheets - EXCLUDES completed
+async function loadTasks() {
+  if (!accessToken) return;
+  const todoList = document.getElementById('todoList');
+  todoList.innerHTML = '<div class="loading">Loading tasks...</div>';
+
+  try {
+    const response = await gapi.client.sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: 'Sheet1!A2:M',
+    });
+
+    const rows = response.result.values || [];
+    allTasks = rows
+      .map((row, index) => ({
+        id: index + 2,
+        task: row[0] || '',
+        description: row[1] || '',
+        priority: row[2] || 'Medium',
+        createdBy: row[3] || '',
+        completed: row[4] === 'TRUE',
+        completedBy: row[5] || '',
+        dateCompleted: row[6] || '',
+        notify: row[7] === 'TRUE',
+        notificationEmails: row[8] || '',
+        category: row[9] || '',
+        dueDate: row[10] || '',
+        assignedTo: row[11] || '',
+        comments: row[12] || ''
+      }))
+      .filter(task => !task.completed);
+
+    const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+    allTasks.sort((a, b) => {
+      const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+      if (priorityDiff !== 0) return priorityDiff;
+      if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      return 0;
+    });
+
+    tasks = [...allTasks];
+    renderTasks();
+    updateStats();
+    populateFilters();
+  } catch (error) {
+    todoList.innerHTML = `<div class="error">Error loading tasks: ${error.message}</div>`;
+  }
+}
+
+function populateFilters() {
+  const creators = [...new Set(allTasks.map(t => t.createdBy).filter(Boolean))];
+  const creatorSelect = document.getElementById('creatorFilter');
+  creatorSelect.innerHTML = '<option value="all">All</option>' +
+    creators.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  const categories = [...new Set(allTasks.map(t => t.category).filter(Boolean))];
+  const categorySelect = document.getElementById('categoryFilter');
+  categorySelect.innerHTML = '<option value="all">All</option>' +
+    categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+  const assignees = [...new Set(allTasks.map(t => t.assignedTo).filter(Boolean))];
+  const assignedSelect = document.getElementById('assignedFilter');
+  assignedSelect.innerHTML = '<option value="all">All</option>' +
+    assignees.map(a => `<option value="${a}">${a}</option>`).join('');
+}
+
+function applyFilters() {
+  const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+  const priorityFilter = document.getElementById('priorityFilter').value;
+  const categoryFilter = document.getElementById('categoryFilter').value;
+  const creatorFilter = document.getElementById('creatorFilter').value;
+  const assignedFilter = document.getElementById('assignedFilter').value;
+  const dueDateFilter = document.getElementById('dueDateFilter').value;
+
+  tasks = allTasks.filter(task => {
+    if (searchTerm && !task.task.toLowerCase().includes(searchTerm) &&
+        !task.description.toLowerCase().includes(searchTerm)) return false;
+    if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+    if (categoryFilter !== 'all' && task.category !== categoryFilter) return false;
+    if (creatorFilter !== 'all' && task.createdBy !== creatorFilter) return false;
+    if (assignedFilter !== 'all' && task.assignedTo !== assignedFilter) return false;
+
+    if (dueDateFilter !== 'all' && task.dueDate) {
+      const dueDate = new Date(task.dueDate);
+      const today = new Date(); today.setHours(0,0,0,0);
+      if (dueDateFilter === 'overdue' && dueDate >= today) return false;
+      if (dueDateFilter === 'today' && dueDate.toDateString() !== today.toDateString()) return false;
+      if (dueDateFilter === 'week') {
+        const weekFromNow = new Date(today); weekFromNow.setDate(weekFromNow.getDate() + 7);
+        if (dueDate < today || dueDate > weekFromNow) return false;
+      }
+      if (dueDateFilter === 'month') {
+        const monthFromNow = new Date(today); monthFromNow.setMonth(monthFromNow.getMonth() + 1);
+        if (dueDate < today || dueDate > monthFromNow) return false;
+      }
+    }
+    return true;
+  });
+
+  const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
+  tasks.sort((a, b) => {
+    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+    if (priorityDiff !== 0) return priorityDiff;
+    if (a.dueDate && b.dueDate) return new Date(a.dueDate) - new Date(b.dueDate);
+    if (a.dueDate) return -1;
+    if (b.dueDate) return 1;
+    return 0;
+  });
+
+  renderTasks();
+}
+
+function updateStats() {
+  gapi.client.sheets.spreadsheets.values.get({
+    spreadsheetId: SHEET_ID,
+    range: 'Sheet1!E2:E',
+  }).then(response => {
+    const completedColumn = response.result.values || [];
+    const completedCount = completedColumn.filter(row => row[0] === 'TRUE').length;
+    document.getElementById('totalTasks').textContent = allTasks.length + completedCount;
+    document.getElementById('completedTasks').textContent = completedCount;
+    document.getElementById('pendingTasks').textContent = allTasks.length;
+  });
+}
+
+function isOverdue(dueDate) {
+  if (!dueDate) return false;
+  const due = new Date(dueDate);
+  const today = new Date(); today.setHours(0,0,0,0);
+  return due < today;
+}
+
+function renderTasks() {
+  const todoList = document.getElementById('todoList');
+  if (tasks.length === 0) {
+    todoList.innerHTML = '<div class="loading">No pending tasks found. Great job! 🎉</div>';
+    return;
+  }
+  todoList.innerHTML = tasks.map(task => {
+    const taskCommentsList = task.comments ? JSON.parse(task.comments) : [];
+    const overdue = isOverdue(task.dueDate);
+    return `
+      <div class="todo-item priority-${task.priority.toLowerCase()}" data-id="${task.id}">
+        <div class="todo-item-header">
+          <div class="todo-item-left">
+            <input type="checkbox" class="checkbox" onchange="toggleTask(${task.id})">
+            <div class="todo-content">
+              <div class="todo-title-row">
+                <div class="todo-title">${task.task}</div>
+                <span class="badge priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                ${task.category ? `<span class="badge category-badge">${task.category}</span>` : ''}
+                ${task.notify ? '<span class="badge notification-badge">🔔 Notify</span>' : ''}
+                ${overdue ? '<span class="badge overdue-badge">⚠️ Overdue</span>' : ''}
+              </div>
+              ${task.description ? `<div class="todo-description">${task.description}</div>` : ''}
+              <div class="todo-meta">
+                <div class="meta-item">👤 Created by: <strong>${task.createdBy}</strong></div>
+                ${task.assignedTo ? `<div class="meta-item">👥 Assigned to: <strong>${task.assignedTo}</strong></div>` : ''}
+                ${task.dueDate ? `<div class="meta-item">📅 Due: <strong>${task.dueDate}</strong></div>` : ''}
+                ${taskCommentsList.length > 0 ? `<div class="meta-item">💬 ${taskCommentsList.length} comment(s)</div>` : ''}
+              </div>
+              <div class="todo-actions">
+                ${isAdmin ? `
+                  <button class="btn btn-small btn-info" onclick="openEditTask(${task.id})">✏️ Edit</button>
+                  <button class="btn btn-small btn-danger" onclick="deleteTask(${task.id})">🗑️ Delete</button>
+                ` : ''}
+                <button class="btn btn-small" onclick="toggleComments(${task.id})">💬 Comments</button>
+              </div>
+              <div class="comments-section" id="comments-${task.id}" style="display: none;">
+                ${taskCommentsList.map(c => `
+                  <div class="comment">
+                    <div class="comment-author">${c.author}</div>
+                    <div class="comment-text">${c.text}</div>
+                  </div>
+                `).join('')}
+                <div class="comment-input-group">
+                  <input type="text" class="comment-input" id="comment-input-${task.id}" placeholder="Add a comment...">
+                  <button class="btn btn-small btn-success" onclick="addComment(${task.id})">Send</button>
                 </div>
+              </div>
             </div>
+          </div>
+          <div class="todo-item-right">
+            <input type="text" class="initials-input" placeholder="Initials" maxlength="5" id="initials-${task.id}">
+          </div>
         </div>
+      </div>
+    `;
+  }).join('');
+}
 
-        <div class="login-screen" id="loginScreen">
-            <h2>Welcome to Team To-Do List</h2>
-            <p>Sign in with Google to view and manage your team's tasks</p>
-            <button class="google-signin-btn" onclick="handleSignIn()">
-                <svg class="google-icon" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                </svg>
-                Sign in with Google
-            </button>
-            <div class="remember-me">
-                <input type="checkbox" id="rememberMe" checked>
-                <label for="rememberMe">Remember me on this device</label>
-            </div>
-        </div>
+async function toggleTask(taskId) {
+  const initialsInput = document.getElementById(`initials-${taskId}`);
+  const initials = initialsInput?.value.trim().toUpperCase();
+  if (!initials) {
+    alert('Please enter your initials before marking the task as complete!');
+    const checkbox = document.querySelector(`[data-id="${taskId}"] .checkbox`);
+    checkbox.checked = false;
+    return;
+  }
+  const today = new Date().toISOString().split('T')[0];
+  const task = allTasks.find(t => t.id === taskId);
 
-        <div id="mainContent">
-            <div class="stats" id="stats">
-                <div class="stat-item">
-                    <div class="stat-number" id="totalTasks">0</div>
-                    <div class="stat-label">Total Tasks</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="completedTasks">0</div>
-                    <div class="stat-label">Completed</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-number" id="pendingTasks">0</div>
-                    <div class="stat-label">Pending</div>
-                </div>
-            </div>
+  try {
+    await gapi.client.sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Sheet1!E${taskId}:G${taskId}`,
+      valueInputOption: 'RAW',
+      resource: { values: [['TRUE', initials, today]] }
+    });
 
-            <div class="action-bar">
-                <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search tasks..." oninput="applyFilters()">
-                <button class="btn btn-success" onclick="openTaskModal()" id="createBtn" style="display: none;">
-                    ➕ Create Task
-                </button>
-                <button class="btn toggle-section-btn" onclick="toggleExports()">
-                    <span id="exportToggleIcon">📤</span> Exports
-                </button>
-                <button class="btn toggle-section-btn" onclick="toggleFilters()">
-                    <span id="filterToggleIcon">🔽</span> Filters
-                </button>
-                <div class="export-buttons" id="exportButtons">
-                    <button class="btn btn-info" onclick="exportToPDF()">
-                        📄 PDF
-                    </button>
-                    <button class="btn btn-warning" onclick="exportToExcel()">
-                        📊 Excel
-                    </button>
-                </div>
-                <button class="btn" onclick="loadTasks()">
-                    ↻ Refresh
-                </button>
-            </div>
+    if (task && task.notify && task.notificationEmails) {
+      sendNotification(task, initials, today);
+    }
 
-            <div class="filter-section" id="filterSection">
-                <div class="filter-group">
-                    <label for="priorityFilter">Priority:</label>
-                    <select id="priorityFilter" onchange="applyFilters()">
-                        <option value="all">All</option>
-                        <option value="High">High</option>
-                        <option value="Medium">Medium</option>
-                        <option value="Low">Low</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="categoryFilter">Category:</label>
-                    <select id="categoryFilter" onchange="applyFilters()">
-                        <option value="all">All</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="creatorFilter">Created By:</label>
-                    <select id="creatorFilter" onchange="applyFilters()">
-                        <option value="all">All</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="assignedFilter">Assigned To:</label>
-                    <select id="assignedFilter" onchange="applyFilters()">
-                        <option value="all">All</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label for="dueDateFilter">Due Date:</label>
-                    <select id="dueDateFilter" onchange="applyFilters()">
-                        <option value="all">All</option>
-                        <option value="overdue">Overdue</option>
-                        <option value="today">Today</option>
-                        <option value="week">This Week</option>
-                        <option value="month">This Month</option>
-                    </select>
-                </div>
-            </div>
+    const idx = allTasks.findIndex(t => t.id === taskId);
+    if (idx !== -1) allTasks.splice(idx, 1);
 
-            <div class="todo-list" id="todoList">
-                <div class="loading">Loading tasks from Google Sheets...</div>
-            </div>
-        </div>
+    const item = document.querySelector(`[data-id="${taskId}"]`);
+    item.style.background = '#4caf50';
+    item.style.color = 'white';
+
+    const successMsg = document.createElement('div');
+    successMsg.className = 'success';
+    successMsg.textContent = '✅ Task completed! Removed from list.';
+    if (task && task.notify) successMsg.textContent += ' 📧 Notifications sent!';
+    item.parentElement.insertBefore(successMsg, item);
+
+    setTimeout(() => {
+      successMsg.remove();
+      item.remove();
+      updateStats();
+      applyFilters();
+    }, 1500);
+  } catch (error) {
+    alert('Error updating task: ' + error.message);
+    const checkbox = document.querySelector(`[data-id="${taskId}"] .checkbox`);
+    checkbox.checked = false;
+  }
+}
+
+function sendNotification(task, completedBy, dateCompleted) {
+  const emails = task.notificationEmails.split(',').map(e => e.trim());
+  console.log('📧 Sending notifications to:', emails, { task: task.task, completedBy, dateCompleted });
+}
+
+// ----- Modal + save/delete/comment (unchanged from your version) -----
+function openTaskModal() {
+  if (!isAdmin) return alert('Only administrators can create tasks.');
+  editingTaskId = null;
+  document.getElementById('modalTitle').textContent = 'Create New Task';
+  document.getElementById('taskForm').reset();
+  notificationEmails = [];
+  uploadedFiles = [];
+  document.getElementById('emailTags').innerHTML = '';
+  document.getElementById('fileList').innerHTML = '';
+  document.getElementById('emailInputGroup').classList.remove('active');
+  document.getElementById('taskModal').style.display = 'block';
+}
+
+function openEditTask(taskId) {
+  if (!isAdmin) return alert('Only administrators can edit tasks.');
+  const task = allTasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  editingTaskId = taskId;
+  document.getElementById('modalTitle').textContent = 'Edit Task';
+  document.getElementById('taskTitle').value = task.task;
+  document.getElementById('taskDescription').value = task.description;
+  document.getElementById('taskPriority').value = task.priority;
+  document.getElementById('taskCategory').value = task.category || '';
+  document.getElementById('taskDueDate').value = task.dueDate || '';
+  document.getElementById('taskAssignedTo').value = task.assignedTo || '';
+  document.getElementById('enableNotifications').checked = task.notify;
+
+  if (task.notify && task.notificationEmails) {
+    notificationEmails = task.notificationEmails.split(',').map(e => e.trim());
+    document.getElementById('emailInputGroup').classList.add('active');
+    renderEmailTags();
+  }
+  document.getElementById('taskModal').style.display = 'block';
+}
+
+function closeTaskModal() {
+  document.getElementById('taskModal').style.display = 'none';
+  document.getElementById('taskForm').reset();
+  notificationEmails = [];
+  uploadedFiles = [];
+  editingTaskId = null;
+}
+
+async function saveTask(event) {
+  event.preventDefault();
+  if (!isAdmin) return alert('Only administrators can save tasks.');
+
+  const title = document.getElementById('taskTitle').value.trim();
+  const description = document.getElementById('taskDescription').value.trim();
+  const priority = document.getElementById('taskPriority').value;
+  const category = document.getElementById('taskCategory').value.trim();
+  const dueDate = document.getElementById('taskDueDate').value;
+  const assignedTo = document.getElementById('taskAssignedTo').value.trim();
+  const notify = document.getElementById('enableNotifications').checked;
+  const emails = notificationEmails.join(',');
+
+  if (!title) return alert('Please enter a task title!');
+
+  try {
+    if (editingTaskId) {
+      await gapi.client.sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `Sheet1!A${editingTaskId}:M${editingTaskId}`,
+        valueInputOption: 'RAW',
+        resource: {
+          values: [[
+            title, description, priority, currentUser.name, 'FALSE', '', '',
+            notify ? 'TRUE' : 'FALSE', emails, category, dueDate, assignedTo,
+            taskComments[editingTaskId] || ''
+          ]]
+        }
+      });
+    } else {
+      await gapi.client.sheets.spreadsheets.values.append({
+        spreadsheetId: SHEET_ID,
+        range: 'Sheet1!A:M',
+        valueInputOption: 'RAW',
+        resource: {
+          values: [[
+            title, description, priority, currentUser.name, 'FALSE', '', '',
+            notify ? 'TRUE' : 'FALSE', emails, category, dueDate, assignedTo, ''
+          ]]
+        }
+      });
+    }
+
+    const todoList = document.getElementById('todoList');
+    const successMsg = document.createElement('div');
+    successMsg.className = 'success';
+    successMsg.textContent = editingTaskId ? '✅ Task updated successfully!' : '✅ Task created successfully!';
+    todoList.insertBefore(successMsg, todoList.firstChild);
+    setTimeout(() => successMsg.remove(), 2000);
+
+    closeTaskModal();
+    loadTasks();
+  } catch (error) {
+    alert('Error saving task: ' + error.message);
+  }
+}
+
+async function deleteTask(taskId) {
+  if (!isAdmin) return alert('Only administrators can delete tasks.');
+  if (!confirm('Are you sure you want to delete this task?')) return;
+
+  try {
+    await gapi.client.sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Sheet1!A${taskId}:M${taskId}`,
+      valueInputOption: 'RAW',
+      resource: { values: [['','','','','','','','','','','','','']] }
+    });
+
+    const successMsg = document.createElement('div');
+    successMsg.className = 'success';
+    successMsg.textContent = '✅ Task deleted successfully!';
+    document.getElementById('todoList').insertBefore(successMsg, document.getElementById('todoList').firstChild);
+    setTimeout(() => successMsg.remove(), 2000);
+    loadTasks();
+  } catch (error) {
+    alert('Error deleting task: ' + error.message);
+  }
+}
+
+function toggleComments(taskId) {
+  const commentsSection = document.getElementById(`comments-${taskId}`);
+  commentsSection.style.display = commentsSection.style.display === 'none' ? 'block' : 'none';
+}
+
+async function addComment(taskId) {
+  const input = document.getElementById(`comment-input-${taskId}`);
+  const text = input.value.trim();
+  if (!text) return;
+
+  const task = allTasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const comments = task.comments ? JSON.parse(task.comments) : [];
+  comments.push({ author: currentUser.name, text, date: new Date().toISOString() });
+
+  try {
+    await gapi.client.sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `Sheet1!M${taskId}`,
+      valueInputOption: 'RAW',
+      resource: { values: [[JSON.stringify(comments)]] }
+    });
+    input.value = '';
+    loadTasks();
+  } catch (error) {
+    alert('Error adding comment: ' + error.message);
+  }
+}
+
+// Email tag helpers
+function toggleEmailInput() {
+  const checkbox = document.getElementById('enableNotifications');
+  const emailGroup = document.getElementById('emailInputGroup');
+  if (checkbox.checked) {
+    emailGroup.classList.add('active');
+  } else {
+    emailGroup.classList.remove('active');
+    notificationEmails = [];
+    document.getElementById('emailTags').innerHTML = '';
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const emailInput = document.getElementById('notificationEmails');
+  if (emailInput) {
+    emailInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        addEmailTag();
+      }
+    });
+  }
+});
+
+function addEmailTag() {
+  const input = document.getElementById('notificationEmails');
+  const email = input.value.trim();
+  if (email && validateEmail(email) && !notificationEmails.includes(email)) {
+    notificationEmails.push(email);
+    renderEmailTags();
+    input.value = '';
+  } else if (notificationEmails.includes(email)) {
+    alert('This email is already added!');
+  } else if (email) {
+    alert('Please enter a valid email address!');
+  }
+}
+
+function validateEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function renderEmailTags() {
+  const container = document.getElementById('emailTags');
+  container.innerHTML = notificationEmails.map((email, index) => `
+    <div class="email-tag">
+      ${email}
+      <span class="remove" onclick="removeEmailTag(${index})">×</span>
     </div>
+  `).join('');
+}
 
-    <!-- Task Modal (Create/Edit) -->
-    <div id="taskModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">Create New Task</h2>
-                <span class="close" onclick="closeTaskModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <form id="taskForm" onsubmit="saveTask(event)">
-                    <input type="hidden" id="editTaskId">
-                    
-                    <div class="form-group">
-                        <label for="taskTitle">Task Title *</label>
-                        <input type="text" id="taskTitle" required placeholder="Enter task title">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="taskDescription">Description</label>
-                        <textarea id="taskDescription" placeholder="Enter task description"></textarea>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="taskPriority">Priority *</label>
-                            <select id="taskPriority" required>
-                                <option value="Medium">Medium</option>
-                                <option value="High">High</option>
-                                <option value="Low">Low</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="taskCategory">Category</label>
-                            <input type="text" id="taskCategory" placeholder="e.g., Marketing, Development">
-                        </div>
-                    </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="taskDueDate">Due Date</label>
-                            <input type="date" id="taskDueDate">
-                        </div>
-                        
-                        <div class="form-group">
-                            <label for="taskAssignedTo">Assign To</label>
-                            <input type="text" id="taskAssignedTo" placeholder="Person's name">
-                        </div>
-                    </div>
+function removeEmailTag(index) {
+  notificationEmails.splice(index, 1);
+  renderEmailTags();
+}
 
-                    <div class="form-group">
-                        <label>Email Notifications</label>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="enableNotifications" onchange="toggleEmailInput()">
-                            <label for="enableNotifications">Send email when task is completed</label>
-                        </div>
-                        
-                        <div id="emailInputGroup" class="email-input-group">
-                            <label for="notificationEmails">Email Addresses (press Enter to add)</label>
-                            <input type="email" id="notificationEmails" placeholder="Enter email and press Enter">
-                            <div id="emailTags" class="email-tags"></div>
-                            <div class="notification-info">
-                                💡 Email notifications will be sent when this task is marked complete.
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="taskFiles">Attachments</label>
-                        <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
-                            <p>📎 Click to upload files or drag and drop</p>
-                            <p style="font-size: 0.85em; color: var(--text-secondary);">Max 5MB per file</p>
-                        </div>
-                        <input type="file" id="fileInput" multiple style="display: none;" onchange="handleFileSelect(event)">
-                        <div id="fileList" class="file-list"></div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-cancel" onclick="closeTaskModal()">Cancel</button>
-                <button class="btn btn-success" onclick="document.getElementById('taskForm').requestSubmit()">Save Task</button>
-            </div>
-        </div>
+// Files (unchanged)
+function handleFileSelect(event) {
+  const files = Array.from(event.target.files);
+  files.forEach(file => {
+    if (file.size > 5 * 1024 * 1024) {
+      alert(`${file.name} is too large. Max size is 5MB.`);
+      return;
+    }
+    uploadedFiles.push(file);
+  });
+  renderFileList();
+}
+
+function renderFileList() {
+  const container = document.getElementById('fileList');
+  container.innerHTML = uploadedFiles.map((file, index) => `
+    <div class="file-item">
+      <span class="file-item-name">📎 ${file.name}</span>
+      <span class="file-item-remove" onclick="removeFile(${index})">×</span>
     </div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script>
-        // Configuration
-        const CLIENT_ID = '429266563329-677t97fuhed0v47p5odrfog71qhcqdh6.apps.googleusercontent.com';
-        const API_KEY = 'AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A';
-        const SHEET_ID = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
-        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
-
-        const ADMIN_EMAILS = [
-            'myork@culver.edu',
-            'hheaton@culver.edu',
-            'dlane@culver.edu'
-        ];
-
-        let tokenClient;
-        let accessToken = null;
-        let tasks = [];
-        let allTasks = [];
-        let currentUser = null;
-        let isAdmin = false;
-        let notificationEmails = [];
-        let uploadedFiles = [];
-        let editingTaskId = null;
-        let taskComments = {};
-
-        // Google API initialization
-        function gapiLoaded() {
-            gapi.load('client', initializeGapiClient);
-        }
-
-        async function initializeGapiClient() {
-            await gapi.client.init({
-                apiKey: API_KEY,
-                discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-            });
-        }
-
-        function gisLoaded() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: (response) => {
-                    if (response.error !== undefined) {
-                        throw (response);
-                    }
-                    accessToken = response.access_token;
-                    
-                    // Save preference if remember me is checked
-                    const rememberMe = document.getElementById('rememberMe')?.checked !== false;
-                    if (rememberMe) {
-                        localStorage.setItem('rememberMe', 'true');
-                        localStorage.setItem('lastSignIn', Date.now().toString());
-                    } else {
-                        localStorage.removeItem('rememberMe');
-                        localStorage.removeItem('lastSignIn');
-                    }
-                    
-                    onSignInSuccess();
-                },
-            });
-            
-            // Initialize Google One Tap for automatic sign-in
-            initializeOneTap();
-        }
-
-        function initializeOneTap() {
-            const rememberMe = localStorage.getItem('rememberMe');
-            const lastSignIn = localStorage.getItem('lastSignIn');
-            
-            // Only try One Tap if user previously selected remember me and signed in within last 30 days
-            if (rememberMe === 'true' && lastSignIn) {
-                const daysSinceSignIn = (Date.now() - parseInt(lastSignIn)) / (1000 * 60 * 60 * 24);
-                
-                if (daysSinceSignIn < 30) {
-                    console.log('Attempting automatic sign-in...');
-                    
-                    // Use Google One Tap for silent sign-in
-                    google.accounts.id.initialize({
-                        client_id: CLIENT_ID,
-                        callback: handleOneTapSignIn,
-                        auto_select: true,
-                        cancel_on_tap_outside: false,
-                    });
-                    
-                    // Attempt automatic sign-in without showing UI
-                    google.accounts.id.prompt((notification) => {
-                        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                            // One Tap didn't work, show normal login screen
-                            console.log('Automatic sign-in not available, showing login screen');
-                        }
-                    });
-                }
-            }
-        }
-
-        function handleOneTapSignIn(response) {
-            // User signed in via One Tap, now get access token for Sheets API
-            console.log('One Tap sign-in successful, requesting Sheets access...');
-            tokenClient.requestAccessToken({ prompt: '' });
-        }
-
-        function handleSignIn() {
-            const rememberMe = document.getElementById('rememberMe').checked;
-            
-            // Save the preference before signing in
-            if (rememberMe) {
-                localStorage.setItem('rememberMe', 'true');
-                localStorage.setItem('lastSignIn', Date.now().toString());
-            } else {
-                localStorage.removeItem('rememberMe');
-                localStorage.removeItem('lastSignIn');
-            }
-            
-            // First, initialize Google ID for future One Tap
-            google.accounts.id.initialize({
-                client_id: CLIENT_ID,
-                callback: handleOneTapSignIn,
-            });
-            
-            // Then request the access token
-            tokenClient.requestAccessToken({ prompt: 'consent' });
-        }
-
-        function onSignInSuccess() {
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('mainContent').style.display = 'block';
-            
-            fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            })
-            .then(response => response.json())
-            .then(data => {
-                currentUser = data;
-                isAdmin = ADMIN_EMAILS.includes(data.email.toLowerCase());
-                
-                document.getElementById('userName').textContent = data.name + (isAdmin ? ' (Admin)' : '');
-                document.getElementById('userAvatar').src = data.picture;
-                document.getElementById('userInfo').style.display = 'flex';
-                
-                const createButton = document.getElementById('createBtn');
-                if (createButton) {
-                    createButton.style.display = isAdmin ? 'inline-flex' : 'none';
-                }
-            });
-
-            loadToggleStates();
-            loadTasks();
-        }
-
-        function signOut() {
-            // Clear remember me preference and last sign in
-            localStorage.removeItem('rememberMe');
-            localStorage.removeItem('lastSignIn');
-            
-            // Also sign out from Google One Tap
-            google.accounts.id.disableAutoSelect();
-            
-            if (accessToken) {
-                google.accounts.oauth2.revoke(accessToken, () => {
-                    accessToken = null;
-                    currentUser = null;
-                    isAdmin = false;
-                    document.getElementById('loginScreen').style.display = 'block';
-                    document.getElementById('mainContent').style.display = 'none';
-                    document.getElementById('userInfo').style.display = 'none';
-                });
-            }
-        }
-
-        // Load tasks from Google Sheets - FIXED TO EXCLUDE COMPLETED TASKS
-        async function loadTasks() {
-            if (!accessToken) return;
-
-            const todoList = document.getElementById('todoList');
-            todoList.innerHTML = '<div class="loading">Loading tasks...</div>';
-
-            try {
-                const response = await gapi.client.sheets.spreadsheets.values.get({
-                    spreadsheetId: SHEET_ID,
-                    range: 'Sheet1!A2:M',
-                });
-
-                const rows = response.result.values || [];
-                
-                // Filter out completed tasks immediately when loading from sheet
-                allTasks = rows
-                    .map((row, index) => ({
-                        id: index + 2,
-                        task: row[0] || '',
-                        description: row[1] || '',
-                        priority: row[2] || 'Medium',
-                        createdBy: row[3] || '',
-                        completed: row[4] === 'TRUE',
-                        completedBy: row[5] || '',
-                        dateCompleted: row[6] || '',
-                        notify: row[7] === 'TRUE',
-                        notificationEmails: row[8] || '',
-                        category: row[9] || '',
-                        dueDate: row[10] || '',
-                        assignedTo: row[11] || '',
-                        comments: row[12] || ''
-                    }))
-                    .filter(task => !task.completed); // ONLY LOAD INCOMPLETE TASKS
-
-                // Sort by priority immediately after loading
-                const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
-                allTasks.sort((a, b) => {
-                    const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-                    if (priorityDiff !== 0) return priorityDiff;
-                    
-                    // If same priority, sort by due date
-                    if (a.dueDate && b.dueDate) {
-                        return new Date(a.dueDate) - new Date(b.dueDate);
-                    }
-                    if (a.dueDate) return -1;
-                    if (b.dueDate) return 1;
-                    
-                    return 0;
-                });
-
-                tasks = [...allTasks];
-                renderTasks();
-                updateStats();
-                populateFilters();
-            } catch (error) {
-                todoList.innerHTML = `<div class="error">Error loading tasks: ${error.message}</div>`;
-            }
-        }
-
-        function populateFilters() {
-            // Populate creators
-            const creators = [...new Set(allTasks.map(t => t.createdBy).filter(Boolean))];
-            const creatorSelect = document.getElementById('creatorFilter');
-            creatorSelect.innerHTML = '<option value="all">All</option>' + 
-                creators.map(c => `<option value="${c}">${c}</option>`).join('');
-
-            // Populate categories
-            const categories = [...new Set(allTasks.map(t => t.category).filter(Boolean))];
-            const categorySelect = document.getElementById('categoryFilter');
-            categorySelect.innerHTML = '<option value="all">All</option>' + 
-                categories.map(c => `<option value="${c}">${c}</option>`).join('');
-
-            // Populate assigned to
-            const assignees = [...new Set(allTasks.map(t => t.assignedTo).filter(Boolean))];
-            const assignedSelect = document.getElementById('assignedFilter');
-            assignedSelect.innerHTML = '<option value="all">All</option>' + 
-                assignees.map(a => `<option value="${a}">${a}</option>`).join('');
-        }
-
-        function applyFilters() {
-            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
-            const priorityFilter = document.getElementById('priorityFilter').value;
-            const categoryFilter = document.getElementById('categoryFilter').value;
-            const creatorFilter = document.getElementById('creatorFilter').value;
-            const assignedFilter = document.getElementById('assignedFilter').value;
-            const dueDateFilter = document.getElementById('dueDateFilter').value;
-
-            tasks = allTasks.filter(task => {
-                // Search filter
-                if (searchTerm && !task.task.toLowerCase().includes(searchTerm) && 
-                    !task.description.toLowerCase().includes(searchTerm)) {
-                    return false;
-                }
-                
-                // Priority filter
-                if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
-                
-                // Category filter
-                if (categoryFilter !== 'all' && task.category !== categoryFilter) return false;
-                
-                // Creator filter
-                if (creatorFilter !== 'all' && task.createdBy !== creatorFilter) return false;
-                
-                // Assigned filter
-                if (assignedFilter !== 'all' && task.assignedTo !== assignedFilter) return false;
-                
-                // Due date filter
-                if (dueDateFilter !== 'all' && task.dueDate) {
-                    const dueDate = new Date(task.dueDate);
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    
-                    if (dueDateFilter === 'overdue' && dueDate >= today) return false;
-                    if (dueDateFilter === 'today' && dueDate.toDateString() !== today.toDateString()) return false;
-                    if (dueDateFilter === 'week') {
-                        const weekFromNow = new Date(today);
-                        weekFromNow.setDate(weekFromNow.getDate() + 7);
-                        if (dueDate < today || dueDate > weekFromNow) return false;
-                    }
-                    if (dueDateFilter === 'month') {
-                        const monthFromNow = new Date(today);
-                        monthFromNow.setMonth(monthFromNow.getMonth() + 1);
-                        if (dueDate < today || dueDate > monthFromNow) return false;
-                    }
-                }
-                
-                return true;
-            });
-
-            // Sort by priority: High first, then Medium, then Low
-            const priorityOrder = { 'High': 1, 'Medium': 2, 'Low': 3 };
-            tasks.sort((a, b) => {
-                const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-                if (priorityDiff !== 0) return priorityDiff;
-                
-                // If same priority, sort by due date (overdue first, then soonest)
-                if (a.dueDate && b.dueDate) {
-                    return new Date(a.dueDate) - new Date(b.dueDate);
-                }
-                if (a.dueDate) return -1; // Tasks with due dates come before those without
-                if (b.dueDate) return 1;
-                
-                return 0;
-            });
-
-            renderTasks();
-        }
-
-        function updateStats() {
-            // For stats, we need to count all tasks including completed
-            // Load completed count from sheet separately
-            gapi.client.sheets.spreadsheets.values.get({
-                spreadsheetId: SHEET_ID,
-                range: 'Sheet1!E2:E',
-            }).then(response => {
-                const completedColumn = response.result.values || [];
-                const completedCount = completedColumn.filter(row => row[0] === 'TRUE').length;
-                
-                document.getElementById('totalTasks').textContent = allTasks.length + completedCount;
-                document.getElementById('completedTasks').textContent = completedCount;
-                document.getElementById('pendingTasks').textContent = allTasks.length;
-            });
-        }
-
-        function isOverdue(dueDate) {
-            if (!dueDate) return false;
-            const due = new Date(dueDate);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            return due < today;
-        }
-
-        function renderTasks() {
-            const todoList = document.getElementById('todoList');
-            
-            if (tasks.length === 0) {
-                todoList.innerHTML = '<div class="loading">No pending tasks found. Great job! 🎉</div>';
-                return;
-            }
-
-            todoList.innerHTML = tasks.map(task => {
-                const taskCommentsList = task.comments ? JSON.parse(task.comments) : [];
-                const overdue = isOverdue(task.dueDate);
-                
-                return `
-                <div class="todo-item priority-${task.priority.toLowerCase()}" data-id="${task.id}">
-                    <div class="todo-item-header">
-                        <div class="todo-item-left">
-                            <input type="checkbox" class="checkbox" onchange="toggleTask(${task.id})">
-                            <div class="todo-content">
-                                <div class="todo-title-row">
-                                    <div class="todo-title">${task.task}</div>
-                                    <span class="badge priority-badge priority-${task.priority.toLowerCase()}">${task.priority}</span>
-                                    ${task.category ? `<span class="badge category-badge">${task.category}</span>` : ''}
-                                    ${task.notify ? '<span class="badge notification-badge">🔔 Notify</span>' : ''}
-                                    ${overdue ? '<span class="badge overdue-badge">⚠️ Overdue</span>' : ''}
-                                </div>
-                                ${task.description ? `<div class="todo-description">${task.description}</div>` : ''}
-                                <div class="todo-meta">
-                                    <div class="meta-item">👤 Created by: <strong>${task.createdBy}</strong></div>
-                                    ${task.assignedTo ? `<div class="meta-item">👥 Assigned to: <strong>${task.assignedTo}</strong></div>` : ''}
-                                    ${task.dueDate ? `<div class="meta-item">📅 Due: <strong>${task.dueDate}</strong></div>` : ''}
-                                    ${taskCommentsList.length > 0 ? `<div class="meta-item">💬 ${taskCommentsList.length} comment(s)</div>` : ''}
-                                </div>
-                                <div class="todo-actions">
-                                    ${isAdmin ? `
-                                        <button class="btn btn-small btn-info" onclick="openEditTask(${task.id})">✏️ Edit</button>
-                                        <button class="btn btn-small btn-danger" onclick="deleteTask(${task.id})">🗑️ Delete</button>
-                                    ` : ''}
-                                    <button class="btn btn-small" onclick="toggleComments(${task.id})">💬 Comments</button>
-                                </div>
-                                <div class="comments-section" id="comments-${task.id}" style="display: none;">
-                                    ${taskCommentsList.map(c => `
-                                        <div class="comment">
-                                            <div class="comment-author">${c.author}</div>
-                                            <div class="comment-text">${c.text}</div>
-                                        </div>
-                                    `).join('')}
-                                    <div class="comment-input-group">
-                                        <input type="text" class="comment-input" id="comment-input-${task.id}" placeholder="Add a comment...">
-                                        <button class="btn btn-small btn-success" onclick="addComment(${task.id})">Send</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="todo-item-right">
-                            <input type="text" class="initials-input" placeholder="Initials" maxlength="5" id="initials-${task.id}">
-                        </div>
-                    </div>
-                </div>
-            `}).join('');
-        }
-
-        async function toggleTask(taskId) {
-            const initialsInput = document.getElementById(`initials-${taskId}`);
-            const initials = initialsInput?.value.trim().toUpperCase();
-
-            if (!initials) {
-                alert('Please enter your initials before marking the task as complete!');
-                const checkbox = document.querySelector(`[data-id="${taskId}"] .checkbox`);
-                checkbox.checked = false;
-                return;
-            }
-
-            const today = new Date().toISOString().split('T')[0];
-            const task = allTasks.find(t => t.id === taskId);
-            
-            try {
-                await gapi.client.sheets.spreadsheets.values.update({
-                    spreadsheetId: SHEET_ID,
-                    range: `Sheet1!E${taskId}:G${taskId}`,
-                    valueInputOption: 'RAW',
-                    resource: {
-                        values: [['TRUE', initials, today]]
-                    }
-                });
-
-                if (task && task.notify && task.notificationEmails) {
-                    sendNotification(task, initials, today);
-                }
-
-                // Remove from current view immediately
-                const taskIndex = allTasks.findIndex(t => t.id === taskId);
-                if (taskIndex !== -1) {
-                    allTasks.splice(taskIndex, 1);
-                }
-                
-                const item = document.querySelector(`[data-id="${taskId}"]`);
-                item.style.background = '#4caf50';
-                item.style.color = 'white';
-                
-                const successMsg = document.createElement('div');
-                successMsg.className = 'success';
-                successMsg.textContent = '✅ Task completed! Removed from list.';
-                if (task && task.notify) {
-                    successMsg.textContent += ' 📧 Notifications sent!';
-                }
-                item.parentElement.insertBefore(successMsg, item);
-                
-                setTimeout(() => {
-                    successMsg.remove();
-                    item.remove();
-                    updateStats();
-                    applyFilters();
-                }, 1500);
-
-            } catch (error) {
-                alert('Error updating task: ' + error.message);
-                const checkbox = document.querySelector(`[data-id="${taskId}"] .checkbox`);
-                checkbox.checked = false;
-            }
-        }
-
-        function sendNotification(task, completedBy, dateCompleted) {
-            const emails = task.notificationEmails.split(',').map(e => e.trim());
-            console.log('📧 Sending notifications to:', emails);
-            console.log('Task:', task.task);
-            console.log('Completed by:', completedBy);
-            console.log('Date:', dateCompleted);
-        }
-
-        // Modal functions
-        function openTaskModal() {
-            if (!isAdmin) {
-                alert('Only administrators can create tasks.');
-                return;
-            }
-            editingTaskId = null;
-            document.getElementById('modalTitle').textContent = 'Create New Task';
-            document.getElementById('taskForm').reset();
-            notificationEmails = [];
-            uploadedFiles = [];
-            document.getElementById('emailTags').innerHTML = '';
-            document.getElementById('fileList').innerHTML = '';
-            document.getElementById('emailInputGroup').classList.remove('active');
-            document.getElementById('taskModal').style.display = 'block';
-        }
-
-        function openEditTask(taskId) {
-            if (!isAdmin) {
-                alert('Only administrators can edit tasks.');
-                return;
-            }
-            
-            const task = allTasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            editingTaskId = taskId;
-            document.getElementById('modalTitle').textContent = 'Edit Task';
-            document.getElementById('taskTitle').value = task.task;
-            document.getElementById('taskDescription').value = task.description;
-            document.getElementById('taskPriority').value = task.priority;
-            document.getElementById('taskCategory').value = task.category || '';
-            document.getElementById('taskDueDate').value = task.dueDate || '';
-            document.getElementById('taskAssignedTo').value = task.assignedTo || '';
-            document.getElementById('enableNotifications').checked = task.notify;
-            
-            if (task.notify && task.notificationEmails) {
-                notificationEmails = task.notificationEmails.split(',').map(e => e.trim());
-                document.getElementById('emailInputGroup').classList.add('active');
-                renderEmailTags();
-            }
-            
-            document.getElementById('taskModal').style.display = 'block';
-        }
-
-        function closeTaskModal() {
-            document.getElementById('taskModal').style.display = 'none';
-            document.getElementById('taskForm').reset();
-            notificationEmails = [];
-            uploadedFiles = [];
-            editingTaskId = null;
-        }
-
-        async function saveTask(event) {
-            event.preventDefault();
-            
-            if (!isAdmin) {
-                alert('Only administrators can save tasks.');
-                return;
-            }
-            
-            const title = document.getElementById('taskTitle').value.trim();
-            const description = document.getElementById('taskDescription').value.trim();
-            const priority = document.getElementById('taskPriority').value;
-            const category = document.getElementById('taskCategory').value.trim();
-            const dueDate = document.getElementById('taskDueDate').value;
-            const assignedTo = document.getElementById('taskAssignedTo').value.trim();
-            const notify = document.getElementById('enableNotifications').checked;
-            const emails = notificationEmails.join(',');
-            
-            if (!title) {
-                alert('Please enter a task title!');
-                return;
-            }
-
-            try {
-                if (editingTaskId) {
-                    // Update existing task
-                    await gapi.client.sheets.spreadsheets.values.update({
-                        spreadsheetId: SHEET_ID,
-                        range: `Sheet1!A${editingTaskId}:M${editingTaskId}`,
-                        valueInputOption: 'RAW',
-                        resource: {
-                            values: [[
-                                title,
-                                description,
-                                priority,
-                                currentUser.name,
-                                'FALSE',
-                                '',
-                                '',
-                                notify ? 'TRUE' : 'FALSE',
-                                emails,
-                                category,
-                                dueDate,
-                                assignedTo,
-                                taskComments[editingTaskId] || ''
-                            ]]
-                        }
-                    });
-                } else {
-                    // Create new task
-                    await gapi.client.sheets.spreadsheets.values.append({
-                        spreadsheetId: SHEET_ID,
-                        range: 'Sheet1!A:M',
-                        valueInputOption: 'RAW',
-                        resource: {
-                            values: [[
-                                title,
-                                description,
-                                priority,
-                                currentUser.name,
-                                'FALSE',
-                                '',
-                                '',
-                                notify ? 'TRUE' : 'FALSE',
-                                emails,
-                                category,
-                                dueDate,
-                                assignedTo,
-                                ''
-                            ]]
-                        }
-                    });
-                }
-
-                const todoList = document.getElementById('todoList');
-                const successMsg = document.createElement('div');
-                successMsg.className = 'success';
-                successMsg.textContent = editingTaskId ? '✅ Task updated successfully!' : '✅ Task created successfully!';
-                todoList.insertBefore(successMsg, todoList.firstChild);
-                
-                setTimeout(() => {
-                    successMsg.remove();
-                }, 2000);
-
-                closeTaskModal();
-                loadTasks();
-
-            } catch (error) {
-                alert('Error saving task: ' + error.message);
-            }
-        }
-
-        async function deleteTask(taskId) {
-            if (!isAdmin) {
-                alert('Only administrators can delete tasks.');
-                return;
-            }
-            
-            if (!confirm('Are you sure you want to delete this task?')) {
-                return;
-            }
-            
-            try {
-                // Clear the row by setting all values to empty
-                await gapi.client.sheets.spreadsheets.values.update({
-                    spreadsheetId: SHEET_ID,
-                    range: `Sheet1!A${taskId}:M${taskId}`,
-                    valueInputOption: 'RAW',
-                    resource: {
-                        values: [['', '', '', '', '', '', '', '', '', '', '', '', '']]
-                    }
-                });
-                
-                const successMsg = document.createElement('div');
-                successMsg.className = 'success';
-                successMsg.textContent = '✅ Task deleted successfully!';
-                document.getElementById('todoList').insertBefore(successMsg, document.getElementById('todoList').firstChild);
-                
-                setTimeout(() => {
-                    successMsg.remove();
-                }, 2000);
-                
-                loadTasks();
-            } catch (error) {
-                alert('Error deleting task: ' + error.message);
-            }
-        }
-
-        function toggleComments(taskId) {
-            const commentsSection = document.getElementById(`comments-${taskId}`);
-            commentsSection.style.display = commentsSection.style.display === 'none' ? 'block' : 'none';
-        }
-
-        async function addComment(taskId) {
-            const input = document.getElementById(`comment-input-${taskId}`);
-            const text = input.value.trim();
-            
-            if (!text) return;
-            
-            const task = allTasks.find(t => t.id === taskId);
-            if (!task) return;
-            
-            const comments = task.comments ? JSON.parse(task.comments) : [];
-            comments.push({
-                author: currentUser.name,
-                text: text,
-                date: new Date().toISOString()
-            });
-            
-            try {
-                await gapi.client.sheets.spreadsheets.values.update({
-                    spreadsheetId: SHEET_ID,
-                    range: `Sheet1!M${taskId}`,
-                    valueInputOption: 'RAW',
-                    resource: {
-                        values: [[JSON.stringify(comments)]]
-                    }
-                });
-                
-                input.value = '';
-                loadTasks();
-            } catch (error) {
-                alert('Error adding comment: ' + error.message);
-            }
-        }
-
-        // Email tags
-        function toggleEmailInput() {
-            const checkbox = document.getElementById('enableNotifications');
-            const emailGroup = document.getElementById('emailInputGroup');
-            
-            if (checkbox.checked) {
-                emailGroup.classList.add('active');
-            } else {
-                emailGroup.classList.remove('active');
-                notificationEmails = [];
-                document.getElementById('emailTags').innerHTML = '';
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const emailInput = document.getElementById('notificationEmails');
-            if (emailInput) {
-                emailInput.addEventListener('keypress', function(e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addEmailTag();
-                    }
-                });
-            }
-        });
-
-        function addEmailTag() {
-            const input = document.getElementById('notificationEmails');
-            const email = input.value.trim();
-            
-            if (email && validateEmail(email) && !notificationEmails.includes(email)) {
-                notificationEmails.push(email);
-                renderEmailTags();
-                input.value = '';
-            } else if (notificationEmails.includes(email)) {
-                alert('This email is already added!');
-            } else if (email) {
-                alert('Please enter a valid email address!');
-            }
-        }
-
-        function validateEmail(email) {
-            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        }
-
-        function renderEmailTags() {
-            const container = document.getElementById('emailTags');
-            container.innerHTML = notificationEmails.map((email, index) => `
-                <div class="email-tag">
-                    ${email}
-                    <span class="remove" onclick="removeEmailTag(${index})">×</span>
-                </div>
-            `).join('');
-        }
-
-        function removeEmailTag(index) {
-            notificationEmails.splice(index, 1);
-            renderEmailTags();
-        }
-
-        // File handling
-        function handleFileSelect(event) {
-            const files = Array.from(event.target.files);
-            files.forEach(file => {
-                if (file.size > 5 * 1024 * 1024) {
-                    alert(`${file.name} is too large. Max size is 5MB.`);
-                    return;
-                }
-                uploadedFiles.push(file);
-            });
-            renderFileList();
-        }
-
-        function renderFileList() {
-            const container = document.getElementById('fileList');
-            container.innerHTML = uploadedFiles.map((file, index) => `
-                <div class="file-item">
-                    <span class="file-item-name">📎 ${file.name}</span>
-                    <span class="file-item-remove" onclick="removeFile(${index})">×</span>
-                </div>
-            `).join('');
-        }
-
-        function removeFile(index) {
-            uploadedFiles.splice(index, 1);
-            renderFileList();
-        }
-
-        // Drag and drop for files
-        const fileUploadArea = document.getElementById('fileUploadArea');
-        if (fileUploadArea) {
-            fileUploadArea.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                fileUploadArea.classList.add('dragover');
-            });
-
-            fileUploadArea.addEventListener('dragleave', () => {
-                fileUploadArea.classList.remove('dragover');
-            });
-
-            fileUploadArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                fileUploadArea.classList.remove('dragover');
-                const files = Array.from(e.dataTransfer.files);
-                files.forEach(file => {
-                    if (file.size <= 5 * 1024 * 1024) {
-                        uploadedFiles.push(file);
-                    }
-                });
-                renderFileList();
-            });
-        }
-
-        // Dark mode toggle
-        function toggleDarkMode() {
-            document.body.classList.toggle('dark-mode');
-            const isDark = document.body.classList.contains('dark-mode');
-            localStorage.setItem('darkMode', isDark);
-            document.querySelector('.dark-mode-toggle').textContent = isDark ? '☀️' : '🌙';
-        }
-
-        // Load dark mode preference
-        if (localStorage.getItem('darkMode') === 'true') {
-            document.body.classList.add('dark-mode');
-            document.querySelector('.dark-mode-toggle').textContent = '☀️';
-        }
-
-        // Export to PDF
-        function exportToPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            doc.setFontSize(18);
-            doc.text('Team To-Do List', 14, 20);
-            
-            doc.setFontSize(10);
-            doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 28);
-            doc.text(`Total Tasks: ${tasks.length}`, 14, 34);
-            
-            const tableData = tasks.map(task => [
-                task.task,
-                task.priority,
-                task.category || 'N/A',
-                task.assignedTo || 'Unassigned',
-                task.dueDate || 'No due date',
-                task.createdBy
-            ]);
-            
-            doc.autoTable({
-                head: [['Task', 'Priority', 'Category', 'Assigned To', 'Due Date', 'Created By']],
-                body: tableData,
-                startY: 40,
-                styles: { fontSize: 8 },
-                headStyles: { fillColor: [102, 126, 234] }
-            });
-            
-            doc.save('todo-list.pdf');
-        }
-
-        // Export to Excel
-        function exportToExcel() {
-            const data = tasks.map(task => ({
-                'Task': task.task,
-                'Description': task.description,
-                'Priority': task.priority,
-                'Category': task.category || '',
-                'Created By': task.createdBy,
-                'Assigned To': task.assignedTo || '',
-                'Due Date': task.dueDate || '',
-                'Notify': task.notify ? 'Yes' : 'No'
-            }));
-            
-            const ws = XLSX.utils.json_to_sheet(data);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, 'Tasks');
-            
-            XLSX.writeFile(wb, 'todo-list.xlsx');
-        }
-
-        // Toggle functions
-        function toggleExports() {
-            const exportButtons = document.getElementById('exportButtons');
-            const icon = document.getElementById('exportToggleIcon');
-            
-            if (exportButtons.classList.contains('hidden')) {
-                exportButtons.classList.remove('hidden');
-                icon.textContent = '📤';
-                localStorage.setItem('exportsVisible', 'true');
-            } else {
-                exportButtons.classList.add('hidden');
-                icon.textContent = '📥';
-                localStorage.setItem('exportsVisible', 'false');
-            }
-        }
-
-        function toggleFilters() {
-            const filterSection = document.getElementById('filterSection');
-            const icon = document.getElementById('filterToggleIcon');
-            
-            if (filterSection.classList.contains('collapsed')) {
-                filterSection.classList.remove('collapsed');
-                icon.textContent = '🔽';
-                localStorage.setItem('filtersVisible', 'true');
-            } else {
-                filterSection.classList.add('collapsed');
-                icon.textContent = '▶️';
-                localStorage.setItem('filtersVisible', 'false');
-            }
-        }
-
-        // Load saved toggle states
-        function loadToggleStates() {
-            const exportsVisible = localStorage.getItem('exportsVisible');
-            const filtersVisible = localStorage.getItem('filtersVisible');
-            
-            if (exportsVisible === 'false') {
-                document.getElementById('exportButtons').classList.add('hidden');
-                document.getElementById('exportToggleIcon').textContent = '📥';
-            }
-            
-            if (filtersVisible === 'false') {
-                document.getElementById('filterSection').classList.add('collapsed');
-                document.getElementById('filterToggleIcon').textContent = '▶️';
-            }
-        }
-
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('taskModal');
-            if (event.target === modal) {
-                closeTaskModal();
-            }
-        }
-
-        // Load Google APIs
-        window.gapiLoaded = gapiLoaded;
-        window.gisLoaded = gisLoaded;
-
-        // Auto-refresh every 2 minutes
-        setInterval(() => {
-            if (accessToken) loadTasks();
-        }, 120000);
-    </script>
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-</body>
-</html>
+  `).join('');
+}
+
+function removeFile(index) {
+  uploadedFiles.splice(index, 1);
+  renderFileList();
+}
+
+// Drag & drop
+const fileUploadArea = document.getElementById('fileUploadArea');
+if (fileUploadArea) {
+  fileUploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    fileUploadArea.classList.add('dragover');
+  });
+  fileUploadArea.addEventListener('dragleave', () => {
+    fileUploadArea.classList.remove('dragover');
+  });
+  fileUploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    fileUploadArea.classList.remove('dragover');
+    const files = Array.from(e.dataTransfer.files);
+    files.forEach(file => {
+      if (file.size <= 5 * 1024 * 1024) uploadedFiles.push(file);
+    });
+    renderFileList();
+  });
+}
+
+// Dark mode (unchanged)
+function toggleDarkMode() {
+  document.body.classList.toggle('dark-mode');
+  const isDark = document.body.classList.contains('dark-mode');
+  localStorage.setItem('darkMode', isDark);
+  document.querySelector('.dark-mode-toggle').textContent = isDark ? '☀️' : '🌙';
+}
+if (localStorage.getItem('darkMode') === 'true') {
+  document.body.classList.add('dark-mode');
+  document.querySelector('.dark-mode-toggle').textContent = '☀️';
+}
+
+// Exporters (unchanged)
+function exportToPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  doc.setFontSize(18);
+  doc.text('Team To-Do List', 14, 20);
+  doc.setFontSize(10);
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 28);
+  doc.text(`Total Tasks: ${tasks.length}`, 14, 34);
+  const tableData = tasks.map(task => [
+    task.task,
+    task.priority,
+    task.category || 'N/A',
+    task.assignedTo || 'Unassigned',
+    task.dueDate || 'No due date',
+    task.createdBy
+  ]);
+  doc.autoTable({
+    head: [['Task','Priority','Category','Assigned To','Due Date','Created By']],
+    body: tableData,
+    startY: 40,
+    styles: { fontSize: 8 },
+    headStyles: { fillColor: [102,126,234] }
+  });
+  doc.save('todo-list.pdf');
+}
+
+function exportToExcel() {
+  const data = tasks.map(task => ({
+    'Task': task.task,
+    'Description': task.description,
+    'Priority': task.priority,
+    'Category': task.category || '',
+    'Created By': task.createdBy,
+    'Assigned To': task.assignedTo || '',
+    'Due Date': task.dueDate || '',
+    'Notify': task.notify ? 'Yes' : 'No'
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Tasks');
+  XLSX.writeFile(wb, 'todo-list.xlsx');
+}
+
+// UI toggles (unchanged)
+function toggleExports() {
+  const exportButtons = document.getElementById('exportButtons');
+  const icon = document.getElementById('exportToggleIcon');
+  if (exportButtons.classList.contains('hidden')) {
+    exportButtons.classList.remove('hidden'); icon.textContent = '📤';
+    localStorage.setItem('exportsVisible','true');
+  } else {
+    exportButtons.classList.add('hidden'); icon.textContent = '📥';
+    localStorage.setItem('exportsVisible','false');
+  }
+}
+
+function toggleFilters() {
+  const filterSection = document.getElementById('filterSection');
+  const icon = document.getElementById('filterToggleIcon');
+  if (filterSection.classList.contains('collapsed')) {
+    filterSection.classList.remove('collapsed'); icon.textContent = '🔽';
+    localStorage.setItem('filtersVisible','true');
+  } else {
+    filterSection.classList.add('collapsed'); icon.textContent = '▶️';
+    localStorage.setItem('filtersVisible','false');
+  }
+}
+
+function loadToggleStates() {
+  const exportsVisible = localStorage.getItem('exportsVisible');
+  const filtersVisible = localStorage.getItem('filtersVisible');
+  if (exportsVisible === 'false') {
+    document.getElementById('exportButtons').classList.add('hidden');
+    document.getElementById('exportToggleIcon').textContent = '📥';
+  }
+  if (filtersVisible === 'false') {
+    document.getElementById('filterSection').classList.add('collapsed');
+    document.getElementById('filterToggleIcon').textContent = '▶️';
+  }
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+  const modal = document.getElementById('taskModal');
+  if (event.target === modal) closeTaskModal();
+};
+
+// Expose for HTML handlers
+window.gapiLoaded = gapiLoaded;
+window.gisLoaded  = gisLoaded;
+window.handleSignIn = handleSignIn;
+window.signOut = signOut;
+window.toggleDarkMode = toggleDarkMode;
+window.openTaskModal = openTaskModal;
+window.openEditTask = openEditTask;
+window.closeTaskModal = closeTaskModal;
+window.saveTask = saveTask;
+window.deleteTask = deleteTask;
+window.applyFilters = applyFilters;
+window.loadTasks = loadTasks;
+window.toggleComments = toggleComments;
+window.addComment = addComment;
+window.exportToPDF = exportToPDF;
+window.exportToExcel = exportToExcel;
+window.toggleExports = toggleExports;
+window.toggleFilters = toggleFilters;
+
+// Auto-refresh tasks every 2 minutes (only if signed in)
+setInterval(() => { if (accessToken) loadTasks(); }, 120000);
+</script>
