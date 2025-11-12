@@ -322,12 +322,13 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="taskCategory">Category</label>
+              <label for="taskCategory">Categories</label>
               <div style="display:flex;gap:8px;">
-                <input type="text" id="taskCategory" list="categoriesList" placeholder="Select or type a category" style="flex:1;"/>
-                <button type="button" class="btn btn-small btn-info" onclick="addNewCategory()" style="white-space:nowrap;">➕ New</button>
+                <input type="text" id="taskCategory" list="categoriesList" placeholder="Select or type, press Enter to add" style="flex:1;" onkeypress="handleCategoryKeyPress(event)"/>
+                <button type="button" class="btn btn-small btn-info" onclick="addCategoryTag()" style="white-space:nowrap;">➕ Add</button>
               </div>
               <datalist id="categoriesList"></datalist>
+              <div id="categoryTags" class="email-tags" style="margin-top:8px;"></div>
             </div>
           </div>
 
@@ -348,10 +349,11 @@
             <div class="form-group">
               <label for="taskAssignedTo">Assign To</label>
               <div style="display:flex;gap:8px;">
-                <input type="text" id="taskAssignedTo" list="assigneesList" placeholder="Select or type a name" style="flex:1;"/>
-                <button type="button" class="btn btn-small btn-info" onclick="addNewAssignee()" style="white-space:nowrap;">➕ New</button>
+                <input type="text" id="taskAssignedTo" list="assigneesList" placeholder="Select or type, press Enter to add" style="flex:1;" onkeypress="handleAssigneeKeyPress(event)"/>
+                <button type="button" class="btn btn-small btn-info" onclick="addAssigneeTag()" style="white-space:nowrap;">➕ Add</button>
               </div>
               <datalist id="assigneesList"></datalist>
+              <div id="assigneeTags" class="email-tags" style="margin-top:8px;"></div>
             </div>
             <div class="form-group"></div>
           </div>
