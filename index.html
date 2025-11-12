@@ -1,349 +1,225 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Interactive To-Do List</title>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    :root{--primary-gradient:linear-gradient(135deg,#667eea 0%,#764ba2 100%);--bg-light:#f8f9fa;--border-color:#e9ecef;--text-primary:#333;--text-secondary:#666}
-    body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:var(--primary-gradient);min-height:100vh;padding:10px;transition:background .3s}
-    body.dark-mode{--bg-light:#2d3436;--border-color:#4a4a4a;--text-primary:#f8f9fa;--text-secondary:#dfe6e9;background:linear-gradient(135deg,#2d3436 0%,#1e272e 100%)}
-    body.dark-mode .container{background:#1e272e}
-    body.dark-mode .todo-item{background:#2d3436;color:var(--text-primary)}
-    body.dark-mode .modal-content{background:#2d3436;color:var(--text-primary)}
-    body.dark-mode input,body.dark-mode textarea,body.dark-mode select{background:#1e272e;color:var(--text-primary);border-color:#4a4a4a}
-    body.dark-mode .filter-section{background:#2d3436}
-    body.dark-mode .comment{background:#1e272e}
-    .container{max-width:1200px;margin:0 auto;background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden}
-    .header{background:var(--primary-gradient);color:#fff;padding:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap}
-    .header-left{flex:1}
-    .header h1{font-size:2em;margin-bottom:5px}
-    .header p{font-size:.9em;opacity:.9}
-    .header-right{display:flex;gap:10px;align-items:center}
-    .dark-mode-toggle{background:rgba(255,255,255,.2);border:none;color:#fff;padding:8px 12px;border-radius:20px;cursor:pointer;font-size:1.2em;transition:background .3s}
-    .dark-mode-toggle:hover{background:rgba(255,255,255,.3)}
-    .user-info{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.2);padding:8px 12px;border-radius:25px;font-size:.85em}
-    .user-avatar{width:32px;height:32px;border-radius:50%;border:2px solid #fff}
-    .sign-out-btn{background:rgba(255,255,255,.3);color:#fff;border:none;padding:6px 12px;border-radius:15px;cursor:pointer;font-size:.85em;transition:background .3s}
-    .sign-out-btn:hover{background:rgba(255,255,255,.4)}
-    .login-screen{padding:60px 30px;text-align:center}
-    .login-screen h2{color:var(--text-primary);margin-bottom:20px;font-size:2em}
-    .login-screen p{color:var(--text-secondary);margin-bottom:30px;font-size:1.1em}
-    .remember-me{display:flex;align-items:center;justify-content:center;gap:8px;margin:20px 0;font-size:.95em;color:var(--text-secondary)}
-    .remember-me input[type="checkbox"]{width:18px;height:18px;cursor:pointer}
-    .google-signin-btn{display:inline-flex;align-items:center;gap:12px;background:#fff;color:#444;border:2px solid #ddd;padding:12px 24px;border-radius:8px;font-size:1.1em;font-weight:600;cursor:pointer;transition:all .3s;box-shadow:0 2px 4px rgba(0,0,0,.1)}
-    .google-signin-btn:hover{box-shadow:0 4px 12px rgba(0,0,0,.15);transform:translateY(-2px)}
-    .google-icon{width:24px;height:24px}
-    .action-bar{padding:20px;background:var(--bg-light);border-bottom:2px solid var(--border-color);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .action-left{display:flex;gap:10px;flex-wrap:wrap;align-items:center;flex:1}
-    .action-right{display:flex;gap:10px;align-items:center;margin-left:auto}
-    .search-box{flex:1;min-width:200px;padding:10px 15px;border:2px solid var(--border-color);border-radius:8px;font-size:.95em}
-    .btn{background:var(--primary-gradient);color:#fff;border:none;padding:10px 20px;border-radius:8px;font-size:.95em;cursor:pointer;transition:all .2s;font-weight:600;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
-    .btn:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(102,126,234,.4)}
-    .btn-success{background:linear-gradient(135deg,#4caf50 0%,#388e3c 100%)}
-    .btn-danger{background:linear-gradient(135deg,#f44336 0%,#c62828 100%)}
-    .btn-warning{background:linear-gradient(135deg,#ff9800 0%,#f57c00 100%)}
-    .btn-info{background:linear-gradient(135deg,#2196f3 0%,#1976d2 100%)}
-    .btn-small{padding:6px 12px;font-size:.85em}
-    .filter-section{padding:15px 20px;background:#fff;border-bottom:1px solid var(--border-color);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .filter-group{display:flex;align-items:center;gap:6px}
-    .filter-group label{font-weight:600;color:var(--text-secondary);font-size:.9em}
-    .filter-group select{padding:6px 10px;border:2px solid var(--border-color);border-radius:6px;font-size:.85em}
-    .todo-list{padding:20px;max-height:600px;overflow-y:auto}
-    .todo-item{background:var(--bg-light);border-left:4px solid #667eea;padding:15px;margin-bottom:12px;border-radius:8px;transition:all .3s;position:relative}
-    .todo-item:hover{box-shadow:0 5px 15px rgba(0,0,0,.1);transform:translateX(5px)}
-    .todo-item.priority-high{border-left-color:#f44336;background:linear-gradient(135deg,#ffebee 0%,#ffcdd2 100%)}
-    .todo-item.priority-medium{border-left-color:#ff9800;background:linear-gradient(135deg,#fff3e0 0%,#ffe0b2 100%)}
-    .todo-item.priority-low{border-left-color:#2196f3;background:linear-gradient(135deg,#e3f2fd 0%,#bbdefb 100%)}
-    body.dark-mode .todo-item.priority-high{background:linear-gradient(135deg,#5d1f1f 0%,#7f2c2c 100%)}
-    body.dark-mode .todo-item.priority-medium{background:linear-gradient(135deg,#5d4a1f 0%,#7f6419 100%)}
-    body.dark-mode .todo-item.priority-low{background:linear-gradient(135deg,#1f3d5d 0%,#2c5f7f 100%)}
-    .todo-item-header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
-    .todo-item-left{display:flex;align-items:flex-start;gap:12px;flex:1}
-    .checkbox{width:22px;height:22px;cursor:pointer;accent-color:#667eea;flex-shrink:0;margin-top:2px}
-    .todo-content{flex:1;min-width:0}
-    .todo-title-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap}
-    .todo-title{font-size:1.05em;font-weight:600;color:var(--text-primary);word-break:break-word}
-    .badge{padding:3px 10px;border-radius:12px;font-size:.7em;font-weight:bold;text-transform:uppercase;white-space:nowrap}
-    .priority-badge.priority-high{background:#f44336;color:#fff}
-    .priority-badge.priority-medium{background:#ff9800;color:#fff}
-    .priority-badge.priority-low{background:#2196f3;color:#fff}
-    .notification-badge{background:#9c27b0;color:#fff}
-    .category-badge{background:#00bcd4;color:#fff}
-    .overdue-badge{background:#f44336;color:#fff}
-    .todo-description{color:var(--text-secondary);font-size:.85em;margin-bottom:8px;word-break:break-word}
-    .todo-meta{display:flex;gap:12px;font-size:.8em;color:var(--text-secondary);flex-wrap:wrap;margin-bottom:8px}
-    .meta-item{display:flex;align-items:center;gap:4px;white-space:nowrap}
-    .todo-actions{display:flex;gap:6px;flex-wrap:wrap}
-    .todo-item-right{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap}
-    .initials-input{width:90px;padding:6px;border:2px solid var(--border-color);border-radius:6px;text-align:center;text-transform:uppercase;font-weight:bold;font-size:.9em}
-    .comments-section{margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color)}
-    .comment{background:#fff;padding:10px;border-radius:6px;margin-bottom:8px;font-size:.85em}
-    .comment-author{font-weight:600;color:#667eea;margin-bottom:4px}
-    .comment-text{color:var(--text-secondary)}
-    .comment-input-group{display:flex;gap:8px;margin-top:8px}
-    .comment-input{flex:1;padding:8px;border:2px solid var(--border-color);border-radius:6px;font-size:.85em}
-    .loading{text-align:center;padding:40px;color:var(--text-secondary);font-size:1.1em}
-    .error{background:#ffebee;color:#c62828;padding:15px;border-radius:8px;margin:20px}
-    .success{background:#e8f5e9;color:#2e7d32;padding:10px 15px;border-radius:6px;margin:10px 0;font-size:.9em;text-align:center}
-    .stats{display:flex;gap:15px;padding:15px 20px;background:var(--primary-gradient);color:#fff}
-    .stat-item{flex:1;text-align:center}
-    .stat-number{font-size:1.8em;font-weight:bold}
-    .stat-label{font-size:.85em;opacity:.9}
-    .modal{display:none;position:fixed;z-index:1000;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,.5);animation:fadeIn .3s}
-    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
-    .modal-content{background:#fff;margin:2% auto;padding:0;border-radius:12px;width:90%;max-width:700px;max-height:90vh;overflow-y:auto;animation:slideIn .3s}
-    @keyframes slideIn{from{transform:translateY(-50px);opacity:0}to{transform:translateY(0);opacity:1}}
-    .modal-header{background:var(--primary-gradient);color:#fff;padding:20px;border-radius:12px 12px 0 0;display:flex;justify-content:space-between;align-items:center}
-    .modal-header h2{margin:0;font-size:1.5em}
-    .close{color:#fff;font-size:28px;font-weight:bold;cursor:pointer;line-height:1;transition:transform .2s}
-    .close:hover{transform:scale(1.2)}
-    .modal-body{padding:25px;max-height:calc(90vh - 180px);overflow-y:auto}
-    .form-group{margin-bottom:20px}
-    .form-group label{display:block;margin-bottom:6px;font-weight:600;color:var(--text-primary)}
-    .form-group input,.form-group textarea,.form-group select{width:100%;padding:10px;border:2px solid var(--border-color);border-radius:6px;font-size:1em;font-family:inherit;transition:border-color .3s}
-    .form-group input:focus,.form-group textarea:focus,.form-group select:focus{outline:none;border-color:#667eea}
-    .form-group textarea{resize:vertical;min-height:80px}
-    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:15px}
-    .checkbox-group{display:flex;align-items:center;gap:8px;padding:12px;background:var(--bg-light);border-radius:6px}
-    .checkbox-group input[type="checkbox"]{width:20px;height:20px;cursor:pointer}
-    .notification-info{background:#e3f2fd;padding:12px;border-radius:6px;margin-top:10px;font-size:.9em;color:#1976d2}
-    .email-input-group{display:none;margin-top:10px}
-    .email-input-group.active{display:block}
-    .email-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
-    .email-tag{background:#667eea;color:#fff;padding:6px 12px;border-radius:20px;font-size:.85em;display:flex;align-items:center;gap:6px}
-    .email-tag .remove{cursor:pointer;font-weight:bold}
-    .file-upload-area{border:2px dashed var(--border-color);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .3s;background:var(--bg-light)}
-    .file-upload-area:hover{border-color:#667eea}
-    .file-upload-area.dragover{border-color:#667eea;background:#e3f2fd}
-    .file-list{margin-top:10px}
-    .file-item{display:flex;justify-content:space-between;align-items:center;padding:8px;background:var(--bg-light);border-radius:6px;margin-bottom:6px;font-size:.85em}
-    .file-item-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .file-item-remove{cursor:pointer;color:#f44336;font-weight:bold;padding:0 8px}
-    .modal-footer{padding:20px 25px;border-top:1px solid var(--border-color);display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
-    .btn-cancel{background:#6c757d}
-    #mainContent{display:none}
+/***** CONFIG (EDIT THESE TWO) *****/
+const SPREADSHEET_ID  = 'PASTE_YOUR_SPREADSHEET_ID_HERE';
+const FORM_ID         = 'PASTE_YOUR_FORM_ID_HERE'; // from the Form edit URL
 
-    .filter-visibility{position:relative;margin-left:auto}
-    .filter-visibility-btn{background:#fff;color:#333;border:2px solid var(--border-color);padding:8px 12px;border-radius:8px;font-weight:600;cursor:pointer}
-    .filter-visibility-menu{position:absolute;right:0;top:110%;background:#fff;border:2px solid var(--border-color);border-radius:10px;padding:10px 12px;box-shadow:0 10px 20px rgba(0,0,0,.08);display:none;min-width:220px;z-index:50}
-    .filter-visibility-menu.show{display:block}
-    .filter-visibility-menu label{display:flex;align-items:center;gap:8px;font-size:.9em;color:var(--text-primary);padding:6px 0;cursor:pointer}
-    .filter-visibility-menu input[type="checkbox"]{width:18px;height:18px}
+/***** CONSTANTS (usually no changes needed) *****/
+const DATA_SHEET       = 'Sheet1';               // target sheet
+const RESPONSES_SHEET  = 'Form Responses 1';     // form’s raw responses tab (rename if different)
+const HEADER_ROW       = 1;                      // header row index
+const ASSIGNEE_FALLBACK = 'EVERYONE';            // preferred fallback assignee
 
-    .export-visibility{position:relative}
-    .export-visibility-btn{background:#fff;color:#333;border:2px solid var(--border-color);padding:8px 12px;border-radius:8px;font-weight:600;cursor:pointer}
-    .export-visibility-menu{position:absolute;right:0;top:110%;background:#fff;border:2px solid var(--border-color);border-radius:10px;padding:10px 12px;box-shadow:0 10px 20px rgba(0,0,0,.08);display:none;min-width:220px;z-index:50}
-    .export-visibility-menu.show{display:block}
-    .export-visibility-menu label{display:flex;align-items:center;gap:8px;font-size:.9em;color:var(--text-primary);padding:6px 0;cursor:pointer}
-    .export-visibility-menu input[type="checkbox"]{width:18px;height:18px}
+// Column map for Sheet1 (A..G)
+const COL = {
+  TITLE: 1,        // A (TASK)
+  DESC:  2,        // B (DESCRIPTION)
+  PRIO:  3,        // C (PRIORITY: High/Medium/Low)
+  DUE_DATE: 4,     // D (DUE DATE)
+  DUE_TIME: 5,     // E (TIME)
+  ASSIGNEE: 6,     // F (ASSIGNED TO)
+  COMPLETED: 7     // G (TRUE/FALSE)
+};
 
-    @media (max-width:768px){
-      .header{flex-direction:column;gap:10px}.header h1{font-size:1.5em}
-      .header-right{width:100%;justify-content:center}
-      .action-bar{flex-direction:column;align-items:stretch}
-      .action-left{width:100%}
-      .action-right{width:100%;justify-content:flex-start}
-      .search-box{width:100%}
-      .btn{width:100%;justify-content:center}
-      .filter-section{flex-direction:column;align-items:stretch}
-      .filter-group{flex-direction:column;align-items:stretch}
-      .filter-group select{width:100%}
-      .stats{flex-direction:column;gap:10px}
-      .todo-item-header{flex-direction:column}
-      .todo-item-right{width:100%;justify-content:flex-start}
-      .form-row{grid-template-columns:1fr}
-      .modal-content{width:95%;margin:10px auto}
-      .modal-footer{flex-direction:column}
-      .modal-footer .btn{width:100%}
-    }
-    @media (max-width:480px){
-      body{padding:5px}.container{border-radius:10px}
-      .header{padding:15px}
-      .action-bar,.filter-section,.todo-list{padding:15px}
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <div class="header-left">
-        <h1>📋 Theatre To-Do List</h1>
-        <p>Connected to Google Sheets</p>
-      </div>
-      <div class="header-right">
-        <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
-        <div class="user-info" id="userInfo" style="display:none;">
-          <img id="userAvatar" class="user-avatar" alt="User"/>
-          <span id="userName"></span>
-          <button class="sign-out-btn" onclick="signOut()">Sign Out</button>
-        </div>
-      </div>
-    </div>
+/***** ONE-TIME SETUP: run this ONCE after pasting the script *****/
+function setupMultiAssignFormSync() {
+  // 1) Make column F validation "Show warning"
+  assigneeValidationShowWarning_();
 
-    <div class="login-screen" id="loginScreen">
-      <h2>Welcome to Theatre To-Do List</h2>
-      <p>Sign in with Google to view and manage your team's tasks</p>
-      <button class="google-signin-btn" onclick="handleSignIn()">
-        <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-        </svg>
-        Sign in with Google
-      </button>
-      <div class="remember-me">
-        <input type="checkbox" id="rememberMe" checked/>
-        <label for="rememberMe">Remember me on this device</label>
-      </div>
-    </div>
+  // 2) Sync allowed assignees from column F into the Form's ASSIGNED TO checkboxes
+  syncAssigneesToForm_Checkboxes();
 
-    <div id="mainContent">
-      <div class="stats" id="stats">
-        <div class="stat-item"><div class="stat-number" id="totalTasks">0</div><div class="stat-label">Total Tasks</div></div>
-        <div class="stat-item"><div class="stat-number" id="completedTasks">0</div><div class="stat-label">Completed</div></div>
-        <div class="stat-item"><div class="stat-number" id="pendingTasks">0</div><div class="stat-label">Pending</div></div>
-      </div>
+  // 3) Attach on-submit trigger to this form
+  attachFormSubmitTriggerById();
+}
 
-      <div class="action-bar">
-        <div class="action-left">
-          <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search tasks..." oninput="applyFilters()"/>
-          <button class="btn" onclick="loadTasks()">↻ Refresh</button>
-          <button class="btn btn-success" onclick="openTaskModal()" id="createBtn" style="display:none;">➕ Create Task</button>
-        </div>
+/***** FORM SUBMIT HANDLER: copies into Sheet1 and resorts *****/
+function onTaskFormSubmit(e) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(DATA_SHEET);
+  if (!sh) throw new Error(`Sheet "${DATA_SHEET}" not found.`);
 
-        <div class="action-right">
-          <button class="btn btn-info" id="exportPdfBtn" onclick="exportToPDF()">📄 Export PDF</button>
-          <button class="btn btn-warning" id="exportXlsxBtn" onclick="exportToExcel()">📊 Export Excel</button>
+  // Use event payload; fallback to last response row if not present
+  let nv = (e && e.namedValues) ? e.namedValues : null;
+  if (!nv) {
+    const resp = ss.getSheetByName(RESPONSES_SHEET);
+    if (!resp) throw new Error(`Responses sheet "${RESPONSES_SHEET}" not found.`);
+    const hdrs = resp.getRange(HEADER_ROW, 1, 1, resp.getLastColumn()).getValues()[0].map(String);
+    const lr   = resp.getLastRow();
+    if (lr <= HEADER_ROW) return;
+    const vals = resp.getRange(lr, 1, 1, resp.getLastColumn()).getValues()[0];
+    nv = {}; hdrs.forEach((h,i) => nv[h] = [vals[i]]);
+  }
 
-          <div class="export-visibility">
-            <button type="button" class="export-visibility-btn" onclick="toggleExportMenu()">⬜ Export Options</button>
-            <div class="export-visibility-menu" id="exportVisibilityMenu">
-              <label><input type="checkbox" id="visExportPdf" onchange="saveExportVisibility()" checked> Show "Export PDF"</label>
-              <label><input type="checkbox" id="visExportXlsx" onchange="saveExportVisibility()" checked> Show "Export Excel"</label>
-            </div>
-          </div>
-        </div>
-      </div>
+  // === Your exact Form titles ===
+  const task       = first_(nv['TASK']);
+  const desc       = first_(nv['DESCRIPTION']);
+  const priority   = first_(nv['PRIORITY']);      // High / Medium / Low
+  const dueDate    = parseDate_(first_(nv['DUE DATE']));
+  const dueTime    = parseTime_(first_(nv['TIME']));
+  const assigneesQ = nv['ASSIGNED TO'];           // CHECKBOXES → array
 
-      <div class="filter-section" id="filterSection">
-        <div class="filter-group" id="fgPriority">
-          <label for="priorityFilter">Priority:</label>
-          <select id="priorityFilter" onchange="applyFilters()">
-            <option value="all">All</option>
-            <option value="High">High</option>
-            <option value="Medium">Medium</option>
-            <option value="Low">Low</option>
-          </select>
-        </div>
+  // Turn checkbox values into a sanitized, comma-separated list
+  const assigneeCell = normalizeMultiAssignees_(assigneesQ, sh); // "Name1, Name2"
 
-        <div class="filter-group" id="fgCategory">
-          <label for="categoryFilter">Category:</label>
-          <select id="categoryFilter" onchange="applyFilters()">
-            <option value="all">All</option>
-          </select>
-        </div>
+  // Build output row (A..G)
+  const row = [];
+  row[COL.TITLE-1]     = task || '';
+  row[COL.DESC-1]      = desc || '';
+  row[COL.PRIO-1]      = priority || '';
+  row[COL.DUE_DATE-1]  = dueDate;
+  row[COL.DUE_TIME-1]  = dueTime;
+  row[COL.ASSIGNEE-1]  = assigneeCell;
+  row[COL.COMPLETED-1] = false;
 
-        <div class="filter-group" id="fgCreator">
-          <label for="creatorFilter">Created By:</label>
-          <select id="creatorFilter" onchange="applyFilters()">
-            <option value="all">All</option>
-          </select>
-        </div>
+  sh.appendRow(row);
 
-        <div class="filter-group" id="fgAssigned">
-          <label for="assignedFilter">Assigned To:</label>
-          <select id="assignedFilter" onchange="applyFilters()">
-            <option value="all">All</option>
-          </select>
-        </div>
+  // Format new row and resort
+  const lrOut = sh.getLastRow();
+  sh.getRange(lrOut, COL.DUE_DATE).setNumberFormat('yyyy-mm-dd');
+  sh.getRange(lrOut, COL.DUE_TIME).setNumberFormat('HH:mm');
+  resortBy_C_then_E_then_D_(sh);
+}
 
-        <div class="filter-group" id="fgDueDate">
-          <label for="dueDateFilter">Due Date:</label>
-          <select id="dueDateFilter" onchange="applyFilters()">
-            <option value="all">All</option>
-            <option value="overdue">Overdue</option>
-            <option value="today">Today</option>
-            <option value="week">This Week</option>
-            <option value="month">This Month</option>
-          </select>
-        </div>
+/***** SYNC CHECKBOXES IN FORM FROM COLUMN-F VALIDATION *****/
+function syncAssigneesToForm_Checkboxes() {
+  const ss   = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh   = ss.getSheetByName(DATA_SHEET);
+  const list = getAllowedAssigneesFromValidation_(sh);
+  if (!list.length) throw new Error('No allowed assignees found in column F validation.');
 
-        <div class="filter-visibility">
-          <button type="button" class="filter-visibility-btn" onclick="toggleFilterMenu()">⚙️ Filters</button>
-          <div class="filter-visibility-menu" id="filterVisibilityMenu">
-            <label><input type="checkbox" id="visPriority"  onchange="saveFilterVisibility()" checked> Priority</label>
-            <label><input type="checkbox" id="visCategory"  onchange="saveFilterVisibility()" checked> Category</label>
-            <label><input type="checkbox" id="visCreator"   onchange="saveFilterVisibility()" checked> Created By</label>
-            <label><input type="checkbox" id="visAssigned"  onchange="saveFilterVisibility()" checked> Assigned To</label>
-            <label><input type="checkbox" id="visDueDate"   onchange="saveFilterVisibility()" checked> Due Date</label>
-          </div>
-        </div>
-      </div>
+  const form = FormApp.openById(FORM_ID);
+  let item = form.getItems(FormApp.ItemType.CHECKBOX)
+                 .map(i => i.asCheckboxItem())
+                 .find(i => i.getTitle() === 'ASSIGNED TO');
+  if (!item) item = form.addCheckboxItem().setTitle('ASSIGNED TO').setRequired(false);
+  item.setChoiceValues(list);
+}
 
-      <div class="todo-list" id="todoList">
-        <div class="loading">Loading tasks from Google Sheets...</div>
-      </div>
-    </div>
-  </div>
+/***** SET COLUMN-F VALIDATION TO "SHOW WARNING" (not reject) *****/
+function assigneeValidationShowWarning_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(DATA_SHEET);
 
-  <div id="taskModal" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 id="modalTitle">Create New Task</h2>
-        <span class="close" onclick="closeTaskModal()">&times;</span>
-      </div>
-      <div class="modal-body">
-        <form id="taskForm" onsubmit="saveTask(event)">
-          <input type="hidden" id="editTaskId"/>
-          <div class="form-group">
-            <label for="taskTitle">Task Title *</label>
-            <input type="text" id="taskTitle" required placeholder="Enter task title"/>
-          </div>
-          <div class="form-group">
-            <label for="taskDescription">Description</label>
-            <textarea id="taskDescription" placeholder="Enter task description"></textarea>
-          </div>
+  const start = HEADER_ROW + 1;
+  const rng   = sh.getRange(start, COL.ASSIGNEE, Math.max(1, sh.getMaxRows()-HEADER_ROW), 1);
+  const rule  = rng.getDataValidation();
+  if (!rule) return;
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="taskPriority">Priority *</label>
-              <select id="taskPriority" required>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Low">Low</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="taskCategory">Categories</label>
-              <div style="display:flex;gap:8px;">
-                <input type="text" id="taskCategory" list="categoriesList" placeholder="Select or type, press Enter to add" style="flex:1;" onkeypress="handleCategoryKeyPress(event)"/>
-                <button type="button" class="btn btn-small btn-info" onclick="addCategoryTag()" style="white-space:nowrap;">➕ Add</button>
-              </div>
-              <datalist id="categoriesList"></datalist>
-              <div id="categoryTags" class="email-tags" style="margin-top:8px;"></div>
-            </div>
-          </div>
+  const type = rule.getCriteriaType();
+  const args = rule.getCriteriaValues();
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="taskDueDate">Due Date</label>
-              <input type="date" id="taskDueDate"/>
-            </div>
-            <div class="form-group">
-              <label for="taskDueTime">Complete by (time) — optional</label>
-              <input type="time" id="taskDueTime"/>
-            </div>
-          </div>
+  let b = SpreadsheetApp.newDataValidation();
+  if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
+    b = b.requireValueInList(args[0], true);
+  } else if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE) {
+    b = b.requireValueInRange(args[0], true);
+  } else {
+    return;
+  }
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="taskAssignedTo">Assign To</label>
-              <div style="display:flex;gap:8px;">
-                <input type="text" id="taskAssignedTo" list="assigneesList" placeholder="Select or type, press Enter to add" style="flex:1;" onkeypress="handleAssigneeKeyPress(event)"/>
-                <button type="button" class="btn btn-small btn-info" onclick="addAssigneeTag()" style="white-space:nowrap;">➕ Add</button>
-              </div>
-              <datalist id="assigneesList"></datalist>
-              <div id="assigneeTags" class="email-tags" style="margin-top:8px;"></div>
+  rng.setDataValidation(
+    b.setAllowInvalid(true)
+     .setHelpText('Pick from the list or type multiple names (comma-separated).')
+     .build()
+  );
+}
+
+/***** SORT: C (High→Med→Low) → E asc → D asc; keep rows intact *****/
+function resortBy_C_then_E_then_D_(sheet) {
+  const lastRow = sheet.getLastRow();
+  const lastCol = sheet.getLastColumn();
+  if (lastRow <= HEADER_ROW) return;
+
+  const dataRange = sheet.getRange(HEADER_ROW + 1, 1, lastRow - HEADER_ROW, lastCol);
+  const values = dataRange.getValues();
+  const rank = { high: 1, medium: 2, low: 3 }; // lower = higher priority
+
+  values.sort((a, b) => {
+    const aP = rank[String(a[COL.PRIO-1]||'').trim().toLowerCase()] ?? 99;
+    const bP = rank[String(b[COL.PRIO-1]||'').trim().toLowerCase()] ?? 99;
+    if (aP !== bP) return aP - bP;
+
+    const aE = a[COL.DUE_TIME-1], bE = b[COL.DUE_TIME-1];
+    if (aE !== bE) return (aE > bE) ? 1 : -1;
+
+    const aD = a[COL.DUE_DATE-1], bD = b[COL.DUE_DATE-1];
+    if (aD !== bD) return (aD > bD) ? 1 : -1;
+
+    return 0;
+  });
+
+  dataRange.setValues(values);
+}
+
+/***** HELPERS *****/
+function first_(v) {
+  if (v == null) return '';
+  return Array.isArray(v) ? (v[0] ?? '') : v;
+}
+function parseDate_(s) {
+  if (!s) return '';
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? '' : d;
+}
+function parseTime_(s) {
+  if (!s) return '';
+  const m = String(s).match(/(\d{1,2}):(\d{2})/);
+  if (m) return new Date(2000,0,1, Number(m[1]), Number(m[2]), 0, 0);
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? '' : new Date(2000,0,1, d.getHours(), d.getMinutes(), 0, 0);
+}
+
+// Read allowed assignees from col-F validation (list or range)
+function getAllowedAssigneesFromValidation_(sheet) {
+  const cell = sheet.getRange(HEADER_ROW + 1, COL.ASSIGNEE);
+  const rule = cell.getDataValidation();
+  if (!rule) return [];
+
+  const type = rule.getCriteriaType();
+  const args = rule.getCriteriaValues();
+
+  if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_LIST) {
+    const items = (args && args[0]) ? args[0] : [];
+    return items.map(s => String(s).trim()).filter(Boolean);
+  }
+  if (type === SpreadsheetApp.DataValidationCriteria.VALUE_IN_RANGE) {
+    const listRange = args && args[0];
+    if (!listRange) return [];
+    return listRange.getValues().flat().map(v => String(v).trim()).filter(Boolean);
+  }
+  return [];
+}
+
+// Production-safe: force every name to the allowed list (fallback if unknown)
+function sanitizeAssignee_(name, sheet) {
+  const allowed = getAllowedAssigneesFromValidation_(sheet);
+  const n = String(name || '').trim();
+  if (!allowed.length) return n || ASSIGNEE_FALLBACK;
+
+  const lower = allowed.map(v => v.toLowerCase());
+  if (n) {
+    const i = lower.indexOf(n.toLowerCase());
+    if (i !== -1) return allowed[i];
+  }
+  const j = lower.indexOf(ASSIGNEE_FALLBACK.toLowerCase());
+  return (j !== -1) ? allowed[j] : allowed[0];
+}
+
+// Checkbox answers or comma-separated input → "Name1, Name2"
+function normalizeMultiAssignees_(values, sheet) {
+  const arr = Array.isArray(values) ? values : String(values || '').split(',');
+  const cleaned = arr.map(v => String(v).trim()).filter(Boolean);
+  const safe = cleaned.map(n => sanitizeAssignee_(n, sheet));
+  return [...new Set(safe)].join(', ');
+}
+
+/***** TRIGGER: attach submit handler to FORM_ID (run by setup) *****/
+function attachFormSubmitTriggerById() {
+  ScriptApp.getProjectTriggers().forEach(t => {
+    if (t.getHandlerFunction() === 'onTaskFormSubmit') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('onTaskFormSubmit')
+    .forForm(FORM_ID)
+    .onFormSubmit()
+    .create();
+  Logger.log('Attached onTaskFormSubmit trigger to form: ' + FORM_ID);
+}
