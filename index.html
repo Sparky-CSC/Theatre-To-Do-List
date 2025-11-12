@@ -262,6 +262,7 @@
             <label for="taskDescription">Description</label>
             <textarea id="taskDescription" placeholder="Enter task description"></textarea>
           </div>
+
           <div class="form-row">
             <div class="form-group">
               <label for="taskPriority">Priority *</label>
@@ -270,20 +271,33 @@
               </select>
             </div>
             <div class="form-group">
-              <label for="taskCategory">Category</label>
-              <input type="text" id="taskCategory" placeholder="e.g., Marketing, Development"/>
+              <label for="taskCategorySelect">Category</label>
+              <!-- Populated from Sheets (unique categories in data) -->
+              <select id="taskCategorySelect">
+                <option value="">(none)</option>
+              </select>
             </div>
           </div>
+
           <div class="form-row">
             <div class="form-group">
               <label for="taskDueDate">Due Date</label>
               <input type="date" id="taskDueDate"/>
             </div>
             <div class="form-group">
-              <label for="taskAssignedTo">Assign To</label>
-              <input type="text" id="taskAssignedTo" placeholder="Person's name"/>
+              <label for="taskDueTime">Due Time (optional)</label>
+              <input type="time" id="taskDueTime" />
             </div>
           </div>
+
+          <div class="form-group">
+            <label for="taskAssignedToSelect">Assign To</label>
+            <!-- Populated from Sheets (unique assignees in data) -->
+            <select id="taskAssignedToSelect">
+              <option value="">(unassigned)</option>
+            </select>
+          </div>
+
           <div class="form-group">
             <label>Email Notifications</label>
             <div class="checkbox-group">
@@ -297,6 +311,7 @@
               <div class="notification-info">💡 Email notifications will be sent when this task is marked complete.</div>
             </div>
           </div>
+
           <div class="form-group">
             <label for="taskFiles">Attachments</label>
             <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
@@ -320,18 +335,13 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <!-- App script with Remember Me + One Tap -->
+  <!-- App script with Remember Me + One Tap + dropdowns + time -->
   <script>
 /* ============================
    Stable Remember Me + One Tap (first-time only)
-   - Silent sign-in with login_hint + prompt:''
-   - Token auto-refresh (~45m)
-   - One Tap shows once per session when:
-       * https/localhost
-       * NOT remembered
-       * No stored loginHint
-       * Not already signed in
-   - FIX: include userinfo scopes to avoid undefined name/picture
+   - Dropdowns for Category and Assign To (from Sheet data)
+   - Optional Due Time saved as ISO (YYYY-MM-DDTHH:MM)
+   - Robust userinfo (no "undefined")
    ============================ */
 
 const CLIENT_ID = '429266563329-677t97fuhed0v47p5odrfog71qhcqdh6.apps.googleusercontent.com';
@@ -374,6 +384,21 @@ function parseJwt(token){
     const jsonPayload = decodeURIComponent(atob(base64).split('').map(c => '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)).join(''));
     return JSON.parse(jsonPayload||'{}');
   }catch(e){ return {}; }
+}
+// parse due date string that may contain time
+function parseDue(dueStr){
+  if(!dueStr) return null;
+  // Accept 'YYYY-MM-DD' or 'YYYY-MM-DDTHH:MM'
+  const iso = dueStr.includes('T') ? dueStr : dueStr; // both fine
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? null : d;
+}
+function formatDueDisplay(dueStr){
+  if(!dueStr) return '';
+  const d = parseDue(dueStr);
+  if(!d) return dueStr;
+  const hasTime = dueStr.includes('T');
+  return hasTime ? d.toLocaleString() : d.toLocaleDateString();
 }
 
 // ---------- Loaders ----------
@@ -433,7 +458,7 @@ function handleOneTapCredential(response){
   const name    = payload.name || payload.given_name || '';
   const picture = payload.picture || '';
 
-  // show provisional UI right away
+  // show provisional UI
   setHeaderUserUI({ name, email, picture });
 
   if(email){ localStorage.setItem('loginHint', email); }
@@ -479,11 +504,10 @@ function onSignInSuccess(){
   fetch('https://www.googleapis.com/oauth2/v2/userinfo', { headers: { Authorization: `Bearer ${accessToken}` }})
     .then(r=>r.json())
     .then(data=>{
-      // Build robust display values
       const displayName = data.name || data.given_name || (data.email ? data.email.split('@')[0] : 'User');
       const picture = data.picture || '';
-
       currentUser = { ...data, name: displayName, picture };
+
       if(localStorage.getItem('rememberMe') === 'true' && data?.email){
         localStorage.setItem('loginHint', data.email.toLowerCase());
       }
@@ -508,7 +532,6 @@ function setHeaderUserUI({ name='', email='', picture='', isAdmin=false }={}){
     avatar.src = picture;
     avatar.style.display = 'block';
   }else{
-    // hide image if none to avoid broken icon
     avatar.style.display = 'none';
   }
   document.getElementById('userInfo').style.display = 'flex';
@@ -563,33 +586,57 @@ async function loadTasks(){
       comments: row[12]||''
     })).filter(t=>!t.completed);
 
+    // sort by priority then due date/time
     const order = {High:1, Medium:2, Low:3};
     allTasks.sort((a,b)=>{
       const p = (order[a.priority]||99)-(order[b.priority]||99);
       if(p!==0) return p;
-      if(a.dueDate && b.dueDate) return new Date(a.dueDate)-new Date(b.dueDate);
-      if(a.dueDate) return -1;
-      if(b.dueDate) return 1;
+      const da = parseDue(a.dueDate); const db = parseDue(b.dueDate);
+      if(da && db) return da - db;
+      if(da) return -1;
+      if(db) return 1;
       return 0;
     });
 
     tasks=[...allTasks];
-    renderTasks(); updateStats(); populateFilters();
+
+    // Populate filters and form dropdowns from live data
+    populateFilters();
+    populateFormLists();
+
+    renderTasks();
+    updateStats();
   }catch(err){
     todoList.innerHTML = `<div class="error">Error loading tasks: ${err.message}</div>`;
   }
 }
 
+function uniqueNonEmpty(list){ return [...new Set(list.filter(Boolean))]; }
+
 function populateFilters(){
-  const creators=[...new Set(allTasks.map(t=>t.createdBy).filter(Boolean))];
-  const categories=[...new Set(allTasks.map(t=>t.category).filter(Boolean))];
-  const assignees=[...new Set(allTasks.map(t=>t.assignedTo).filter(Boolean))];
+  const creators=uniqueNonEmpty(allTasks.map(t=>t.createdBy));
+  const categories=uniqueNonEmpty(allTasks.map(t=>t.category));
+  const assignees=uniqueNonEmpty(allTasks.map(t=>t.assignedTo));
   const creatorSelect=document.getElementById('creatorFilter');
   const categorySelect=document.getElementById('categoryFilter');
   const assignedSelect=document.getElementById('assignedFilter');
   creatorSelect.innerHTML='<option value="all">All</option>'+creators.map(c=>`<option value="${c}">${c}</option>`).join('');
   categorySelect.innerHTML='<option value="all">All</option>'+categories.map(c=>`<option value="${c}">${c}</option>`).join('');
   assignedSelect.innerHTML='<option value="all">All</option>'+assignees.map(a=>`<option value="${a}">${a}</option>`).join('');
+}
+
+// NEW: Populate Category/AssignTo dropdowns in the Task Modal from Sheet data
+function populateFormLists(selected = {}){
+  const categories=uniqueNonEmpty(allTasks.map(t=>t.category));
+  const assignees=uniqueNonEmpty(allTasks.map(t=>t.assignedTo));
+  const catSel = document.getElementById('taskCategorySelect');
+  const asgSel = document.getElementById('taskAssignedToSelect');
+
+  catSel.innerHTML = '<option value="">(none)</option>' + categories.map(c=>`<option value="${c}">${c}</option>`).join('');
+  asgSel.innerHTML = '<option value="">(unassigned)</option>' + assignees.map(a=>`<option value="${a}">${a}</option>`).join('');
+
+  if(selected.category) catSel.value = selected.category;
+  if(selected.assignedTo) asgSel.value = selected.assignedTo;
 }
 
 function applyFilters(){
@@ -607,11 +654,21 @@ function applyFilters(){
     if(crf!=='all' && t.createdBy!==crf) return false;
     if(af!=='all' && t.assignedTo!==af) return false;
     if(df!=='all' && t.dueDate){
-      const due=new Date(t.dueDate); const today=new Date(); today.setHours(0,0,0,0);
-      if(df==='overdue' && due>=today) return false;
-      if(df==='today' && due.toDateString()!==today.toDateString()) return false;
-      if(df==='week'){ const w=new Date(today); w.setDate(w.getDate()+7); if(due<today || due>w) return false; }
-      if(df==='month'){ const m=new Date(today); m.setMonth(m.getMonth()+1); if(due<today || due>m) return false; }
+      const due=parseDue(t.dueDate); if(!due) return false;
+      const today=new Date(); today.setHours(0,0,0,0);
+      if(df==='overdue' && due >= today) return false;
+      if(df==='today'){
+        const todayEnd = new Date(today); todayEnd.setDate(todayEnd.getDate()+1);
+        if(!(due >= today && due < todayEnd)) return false;
+      }
+      if(df==='week'){
+        const weekFromNow=new Date(today); weekFromNow.setDate(weekFromNow.getDate()+7);
+        if(due < today || due > weekFromNow) return false;
+      }
+      if(df==='month'){
+        const monthFromNow=new Date(today); monthFromNow.setMonth(monthFromNow.getMonth()+1);
+        if(due < today || due > monthFromNow) return false;
+      }
     }
     return true;
   });
@@ -620,9 +677,10 @@ function applyFilters(){
   tasks.sort((a,b)=>{
     const p=(order[a.priority]||99)-(order[b.priority]||99);
     if(p!==0) return p;
-    if(a.dueDate && b.dueDate) return new Date(a.dueDate)-new Date(b.dueDate);
-    if(a.dueDate) return -1;
-    if(b.dueDate) return 1;
+    const da=parseDue(a.dueDate), db=parseDue(b.dueDate);
+    if(da && db) return da - db;
+    if(da) return -1;
+    if(db) return 1;
     return 0;
   });
 
@@ -640,7 +698,12 @@ function updateStats(){
     });
 }
 
-function isOverdue(d){ if(!d) return false; const due=new Date(d); const today=new Date(); today.setHours(0,0,0,0); return due<today; }
+function isOverdue(dueStr){
+  const d = parseDue(dueStr);
+  if(!d) return false;
+  const now = new Date();
+  return d < now.setHours(0,0,0,0); // overdue if strictly before today
+}
 
 function renderTasks(){
   const list=document.getElementById('todoList');
@@ -648,6 +711,7 @@ function renderTasks(){
   list.innerHTML = tasks.map(t=>{
     const comments = t.comments ? JSON.parse(t.comments) : [];
     const overdue = isOverdue(t.dueDate);
+    const dueDisp = t.dueDate ? formatDueDisplay(t.dueDate) : '';
     return `
       <div class="todo-item priority-${t.priority.toLowerCase()}" data-id="${t.id}">
         <div class="todo-item-header">
@@ -665,7 +729,7 @@ function renderTasks(){
               <div class="todo-meta">
                 <div class="meta-item">👤 Created by: <strong>${t.createdBy}</strong></div>
                 ${t.assignedTo ? `<div class="meta-item">👥 Assigned to: <strong>${t.assignedTo}</strong></div>`:''}
-                ${t.dueDate ? `<div class="meta-item">📅 Due: <strong>${t.dueDate}</strong></div>`:''}
+                ${dueDisp ? `<div class="meta-item">📅 Due: <strong>${dueDisp}</strong></div>`:''}
                 ${comments.length>0 ? `<div class="meta-item">💬 ${comments.length} comment(s)</div>`:''}
               </div>
               <div class="todo-actions">
@@ -733,22 +797,43 @@ function openTaskModal(){
   if(!isAdmin) return alert('Only administrators can create tasks.');
   editingTaskId=null; document.getElementById('modalTitle').textContent='Create New Task';
   document.getElementById('taskForm').reset();
+  // ensure dropdowns reflect latest data
+  populateFormLists();
   notificationEmails=[]; uploadedFiles=[];
   document.getElementById('emailTags').innerHTML=''; document.getElementById('fileList').innerHTML='';
   document.getElementById('emailInputGroup').classList.remove('active');
   document.getElementById('taskModal').style.display='block';
 }
+
 function openEditTask(taskId){
   if(!isAdmin) return alert('Only administrators can edit tasks.');
   const t=allTasks.find(x=>x.id===taskId); if(!t) return;
+
   editingTaskId=taskId;
   document.getElementById('modalTitle').textContent='Edit Task';
   document.getElementById('taskTitle').value=t.task;
   document.getElementById('taskDescription').value=t.description;
   document.getElementById('taskPriority').value=t.priority;
-  document.getElementById('taskCategory').value=t.category||'';
-  document.getElementById('taskDueDate').value=t.dueDate||'';
-  document.getElementById('taskAssignedTo').value=t.assignedTo||'';
+
+  // prepare dropdowns with current selections
+  populateFormLists({ category: t.category || '', assignedTo: t.assignedTo || '' });
+
+  // due date + optional time
+  if(t.dueDate){
+    const hasTime = t.dueDate.includes('T');
+    if(hasTime){
+      const [d, tm] = t.dueDate.split('T');
+      document.getElementById('taskDueDate').value = d;
+      document.getElementById('taskDueTime').value = tm.slice(0,5);
+    }else{
+      document.getElementById('taskDueDate').value = t.dueDate;
+      document.getElementById('taskDueTime').value = '';
+    }
+  }else{
+    document.getElementById('taskDueDate').value = '';
+    document.getElementById('taskDueTime').value = '';
+  }
+
   document.getElementById('enableNotifications').checked=t.notify;
   if(t.notify && t.notificationEmails){
     notificationEmails=t.notificationEmails.split(',').map(e=>e.trim());
@@ -756,41 +841,52 @@ function openEditTask(taskId){
   }
   document.getElementById('taskModal').style.display='block';
 }
+
 function closeTaskModal(){
   document.getElementById('taskModal').style.display='none';
   document.getElementById('taskForm').reset();
   notificationEmails=[]; uploadedFiles=[]; editingTaskId=null;
 }
+
 async function saveTask(e){
   e.preventDefault();
   if(!isAdmin) return alert('Only administrators can save tasks.');
+
   const title=document.getElementById('taskTitle').value.trim();
   const description=document.getElementById('taskDescription').value.trim();
   const priority=document.getElementById('taskPriority').value;
-  const category=document.getElementById('taskCategory').value.trim();
+  const category=document.getElementById('taskCategorySelect').value.trim();
   const dueDate=document.getElementById('taskDueDate').value;
-  const assignedTo=document.getElementById('taskAssignedTo').value.trim();
+  const dueTime=document.getElementById('taskDueTime').value;
+  const assignedTo=document.getElementById('taskAssignedToSelect').value.trim();
   const notify=document.getElementById('enableNotifications').checked;
   const emails=notificationEmails.join(',');
+
   if(!title) return alert('Please enter a task title!');
+
+  // combine date + time to ISO if time is given (store in the Due Date column)
+  const dueValue = dueDate ? (dueTime ? `${dueDate}T${dueTime}` : dueDate) : '';
+
   try{
     if(editingTaskId){
       await gapi.client.sheets.spreadsheets.values.update({
         spreadsheetId:SHEET_ID, range:`Sheet1!A${editingTaskId}:M${editingTaskId}`, valueInputOption:'RAW',
-        resource:{ values:[[title,description,priority,currentUser.name,'FALSE','','',notify?'TRUE':'FALSE',emails,category,dueDate,assignedTo,taskComments[editingTaskId]||'']] }
+        resource:{ values:[[title,description,priority,currentUser.name,'FALSE','','',notify?'TRUE':'FALSE',emails,category,dueValue,assignedTo,taskComments[editingTaskId] || '']] }
       });
     }else{
       await gapi.client.sheets.spreadsheets.values.append({
         spreadsheetId:SHEET_ID, range:'Sheet1!A:M', valueInputOption:'RAW',
-        resource:{ values:[[title,description,priority,currentUser.name,'FALSE','','',notify?'TRUE':'FALSE',emails,category,dueDate,assignedTo,'']] }
+        resource:{ values:[[title,description,priority,currentUser.name,'FALSE','','',notify?'TRUE':'FALSE',emails,category,dueValue,assignedTo,'']] }
       });
     }
     const list=document.getElementById('todoList');
     const msg=document.createElement('div'); msg.className='success'; msg.textContent=editingTaskId?'✅ Task updated successfully!':'✅ Task created successfully!';
     list.insertBefore(msg,list.firstChild); setTimeout(()=>msg.remove(),2000);
+
     closeTaskModal(); loadTasks();
   }catch(err){ alert('Error saving task: '+err.message); }
 }
+
 async function deleteTask(taskId){
   if(!isAdmin) return alert('Only administrators can delete tasks.');
   if(!confirm('Are you sure you want to delete this task?')) return;
@@ -804,10 +900,12 @@ async function deleteTask(taskId){
     setTimeout(()=>msg.remove(),2000); loadTasks();
   }catch(err){ alert('Error deleting task: '+err.message); }
 }
+
 function toggleComments(taskId){
   const el=document.getElementById(`comments-${taskId}`);
   el.style.display = el.style.display==='none' ? 'block' : 'none';
 }
+
 async function addComment(taskId){
   const input=document.getElementById(`comment-input-${taskId}`); const text=input.value.trim(); if(!text) return;
   const t=allTasks.find(x=>x.id===taskId); if(!t) return;
@@ -888,12 +986,28 @@ function exportToPDF(){
   doc.setFontSize(18); doc.text('Theatre To-Do List',14,20);
   doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`,14,28);
   doc.text(`Total Tasks: ${tasks.length}`,14,34);
-  const tableData=tasks.map(t=>[t.task,t.priority,t.category||'N/A',t.assignedTo||'Unassigned',t.dueDate||'No due date',t.createdBy]);
+  const tableData=tasks.map(t=>[
+    t.task,
+    t.priority,
+    t.category||'N/A',
+    t.assignedTo||'Unassigned',
+    t.dueDate ? formatDueDisplay(t.dueDate) : 'No due date',
+    t.createdBy
+  ]);
   doc.autoTable({ head:[['Task','Priority','Category','Assigned To','Due Date','Created By']], body:tableData, startY:40, styles:{fontSize:8}, headStyles:{fillColor:[102,126,234]}});
   doc.save('theatre-todo-list.pdf');
 }
 function exportToExcel(){
-  const data=tasks.map(t=>({'Task':t.task,'Description':t.description,'Priority':t.priority,'Category':t.category||'','Created By':t.createdBy,'Assigned To':t.assignedTo||'','Due Date':t.dueDate||'','Notify':t.notify?'Yes':'No'}));
+  const data=tasks.map(t=>({
+    'Task':t.task,
+    'Description':t.description,
+    'Priority':t.priority,
+    'Category':t.category||'',
+    'Created By':t.createdBy,
+    'Assigned To':t.assignedTo||'',
+    'Due Date':t.dueDate ? formatDueDisplay(t.dueDate) : '',
+    'Notify':t.notify?'Yes':'No'
+  }));
   const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Tasks'); XLSX.writeFile(wb,'theatre-todo-list.xlsx');
 }
 
