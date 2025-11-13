@@ -62,7 +62,7 @@
     .btn-warning{background:linear-gradient(135deg,#ff9800 0%,#f57c00 100%)}
     .btn-info{background:linear-gradient(135deg,#2196f3 0%,#1976d2 100%)}
     .btn-small{padding:6px 12px;font-size:.85em}
-    .filter-section{padding:15px 20px;background:#fff;border-bottom:1px solid var(--border-color);display:flex;gap:10px;flex-wrap:wrap;align-items:center;transition:all .3s ease;overflow:hidden;max-height:200px}
+    .filter-section{padding:15px 20px;background:#fff;border-bottom:1px solid var(--border-color);display:flex;gap:10px;flex-wrap:wrap;align-items:center;transition:all .3s.ease;overflow:hidden;max-height:200px}
     .filter-section.collapsed{max-height:0;padding:0 20px;border-bottom:none}
     .filter-group{display:flex;align-items:center;gap:6px}
     .filter-group label{font-weight:600;color:var(--text-secondary);font-size:.9em}
@@ -387,8 +387,7 @@
           <div class="form-group">
             <label for="taskFiles">Attachments</label>
             <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
-              <p>📎 Click to upload files or drag and drop
-<p>📎 Click to upload files or drag and drop</p>
+              <p>📎 Click to upload files or drag and drop</p>
               <p style="font-size:.85em;color:var(--text-secondary);">Max 5MB per file</p>
             </div>
             <input type="file" id="fileInput" multiple style="display:none" onchange="handleFileSelect(event)"/>
@@ -448,10 +447,10 @@ const SCOPES    = [
 
 const ADMIN_EMAILS = ['myork@culver.edu','hheaton@culver.edu','dlane@culver.edu'];
 
-// CORRECT COLUMN MAPPING to match your spreadsheet:
+// COLUMN MAPPING (matches your sheet):
 // A=Task, B=Description, C=Priority, D=Due Date, E=Due Time, F=Assigned To
-// G=Completed, H=Completed By, I=Date Completed, J=Notify, K=Notification Emails
-// L=Category, M=Comments, N=Created By
+// G=Completed, H=Completed By, I=Date Complete, J=Notify, K=Notification Emails
+// L=Category, M=Comments, N=*(unused)*, O=Created By
 
 let tokenClient;
 let accessToken = null;
@@ -732,13 +731,17 @@ async function createNewList(e){
       }
     });
     
-    // CORRECT HEADERS for your spreadsheet structure
+    // Header row A1:O1 with blank N
     await gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
-      range: `${listName}!A1:N1`,
+      range: `${listName}!A1:O1`,
       valueInputOption: 'RAW',
       resource: {
-        values: [['Task','Description','Priority','Due Date','Due Time','Assigned To','Completed','Completed By','Date Completed','Notify','Notification Emails','Category','Comments','Created By']]
+        values: [[
+          'Task','Description','Priority','Due Date','Due Time','Assigned To',
+          'Completed','Completed By','Date Complete','Notify','Notification Emails',
+          'Category','Comments','', 'Created By'
+        ]]
       }
     });
     
@@ -767,27 +770,27 @@ async function loadTasks(){
   todoList.innerHTML = '<div class="loading">Loading tasks...</div>';
   try{
     const response = await gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: `${currentSheet}!A2:N`
+      spreadsheetId: SHEET_ID, range: `${currentSheet}!A2:O`
     });
     const rows = response.result.values || [];
     
-    // CORRECTED MAPPING to match your columns
     allTasks = rows.map((row,idx)=>({
       id: idx+2,
-      task: row[0]||'',              // A: Task
-      description: row[1]||'',        // B: Description
-      priority: row[2]||'Medium',     // C: Priority
-      dueDate: row[3]||'',            // D: Due Date
-      dueTime: row[4]||'',            // E: Due Time
-      assignedTo: row[5]||'',         // F: Assigned To
-      completed: row[6]==='TRUE',     // G: Completed
-      completedBy: row[7]||'',        // H: Completed By
-      dateCompleted: row[8]||'',      // I: Date Completed
-      notify: row[9]==='TRUE',        // J: Notify
-      notificationEmails: row[10]||'',// K: Notification Emails
-      category: row[11]||'',          // L: Category
-      comments: row[12]||'',          // M: Comments
-      createdBy: row[13]||''          // N: Created By
+      task: row[0]||'',
+      description: row[1]||'',
+      priority: row[2]||'Medium',
+      dueDate: row[3]||'',
+      dueTime: row[4]||'',
+      assignedTo: row[5]||'',
+      completed: row[6]==='TRUE',
+      completedBy: row[7]||'',
+      dateCompleted: row[8]||'',
+      notify: row[9]==='TRUE',
+      notificationEmails: row[10]||'',
+      category: row[11]||'',
+      comments: row[12]||'',
+      // row[13] is column N (unused)
+      createdBy: row[14]||''   // O = Created By
     })).filter(t=>!t.completed);
 
     const order = {High:1, Medium:2, Low:3};
@@ -977,7 +980,6 @@ async function toggleTask(taskId){
   const today=new Date().toISOString().split('T')[0];
   const task=allTasks.find(t=>t.id===taskId);
   try{
-    // Update columns G, H, I (Completed, Completed By, Date Completed)
     await gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId:SHEET_ID, range:`${currentSheet}!G${taskId}:I${taskId}`, valueInputOption:'RAW',
       resource:{ values:[['TRUE', initials, today]] }
@@ -1066,7 +1068,10 @@ function openEditTask(taskId){
   document.getElementById('modalTitle').textContent='Edit Task';
   document.getElementById('taskTitle').value=t.task;
   document.getElementById('taskDescription').value=t.description;
-document.getElementById('taskPriority').value=t.priority;
+  document.getElementById('taskPriority').value=t.priority;
+
+  // Cache existing comments so we don't lose them on save
+  taskComments[taskId] = t.comments || '';
 
   populateFormLists({ category: t.category || '', assignedTo: t.assignedTo || '' });
 
@@ -1074,9 +1079,14 @@ document.getElementById('taskPriority').value=t.priority;
   document.getElementById('taskDueTime').value = t.dueTime || '';
 
   document.getElementById('enableNotifications').checked=t.notify;
+  notificationEmails = [];
+  document.getElementById('emailTags').innerHTML = '';
+  document.getElementById('emailInputGroup').classList.remove('active');
+
   if(t.notify && t.notificationEmails){
     notificationEmails=t.notificationEmails.split(',').map(e=>e.trim());
-    document.getElementById('emailInputGroup').classList.add('active'); renderEmailTags();
+    document.getElementById('emailInputGroup').classList.add('active');
+    renderEmailTags();
   }
   document.getElementById('taskModal').style.display='block';
 }
@@ -1109,49 +1119,46 @@ async function saveTask(e){
   }
 
   try{
-    // CORRECTED COLUMN ORDER: A-N
-    // A=Task, B=Description, C=Priority, D=Due Date, E=Due Time, F=Assigned To
-    // G=Completed, H=Completed By, I=Date Completed, J=Notify, K=Notification Emails
-    // L=Category, M=Comments, N=Created By
-    
     if(editingTaskId){
       await gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId:SHEET_ID, range:`${currentSheet}!A${editingTaskId}:N${editingTaskId}`, valueInputOption:'RAW',
+        spreadsheetId:SHEET_ID, range:`${currentSheet}!A${editingTaskId}:O${editingTaskId}`, valueInputOption:'RAW',
         resource:{ values:[[
-          title,                    // A: Task
-          description,              // B: Description
-          priority,                 // C: Priority
-          dueDate,                  // D: Due Date
-          dueTime,                  // E: Due Time
-          assignedTo,               // F: Assigned To
-          'FALSE',                  // G: Completed
-          '',                       // H: Completed By
-          '',                       // I: Date Completed
-          notify?'TRUE':'FALSE',    // J: Notify
-          emails,                   // K: Notification Emails
-          category,                 // L: Category
-          taskComments[editingTaskId] || '', // M: Comments
-          currentUser.name          // N: Created By
+          title,                    // A
+          description,              // B
+          priority,                 // C
+          dueDate,                  // D
+          dueTime,                  // E
+          assignedTo,               // F
+          'FALSE',                  // G
+          '',                       // H
+          '',                       // I
+          notify?'TRUE':'FALSE',    // J
+          emails,                   // K
+          category,                 // L
+          taskComments[editingTaskId] || '', // M
+          '',                       // N (unused)
+          currentUser.name          // O: Created By
         ]] }
       });
     }else{
       await gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId:SHEET_ID, range:`${currentSheet}!A:N`, valueInputOption:'RAW',
+        spreadsheetId:SHEET_ID, range:`${currentSheet}!A:O`, valueInputOption:'RAW',
         resource:{ values:[[
-          title,                    // A: Task
-          description,              // B: Description
-          priority,                 // C: Priority
-          dueDate,                  // D: Due Date
-          dueTime,                  // E: Due Time
-          assignedTo,               // F: Assigned To
-          'FALSE',                  // G: Completed
-          '',                       // H: Completed By
-          '',                       // I: Date Completed
-          notify?'TRUE':'FALSE',    // J: Notify
-          emails,                   // K: Notification Emails
-          category,                 // L: Category
-          '',                       // M: Comments
-          currentUser.name          // N: Created By
+          title,                    // A
+          description,              // B
+          priority,                 // C
+          dueDate,                  // D
+          dueTime,                  // E
+          assignedTo,               // F
+          'FALSE',                  // G
+          '',                       // H
+          '',                       // I
+          notify?'TRUE':'FALSE',    // J
+          emails,                   // K
+          category,                 // L
+          '',                       // M Comments (empty initial)
+          '',                       // N
+          currentUser.name          // O
         ]] }
       });
     }
@@ -1169,8 +1176,8 @@ async function deleteTask(taskId){
   if(!confirm('Are you sure you want to delete this task?')) return;
   try{
     await gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId:SHEET_ID, range:`${currentSheet}!A${taskId}:N${taskId}`, valueInputOption:'RAW',
-      resource:{ values:[['','','','','','','','','','','','','','']] }
+      spreadsheetId:SHEET_ID, range:`${currentSheet}!A${taskId}:O${taskId}`, valueInputOption:'RAW',
+      resource:{ values:[['','','','','','','','','','','','','','','']] }
     });
     const list=document.getElementById('todoList'); const msg=document.createElement('div');
     msg.className='success'; msg.textContent='✅ Task deleted successfully!'; 
@@ -1193,7 +1200,7 @@ async function addComment(taskId){
   const comments=t.comments?JSON.parse(t.comments):[]; 
   comments.push({author:currentUser.name,text,date:new Date().toISOString()});
   try{
-    // Column M is Comments
+    // M = Comments
     await gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId:SHEET_ID, range:`${currentSheet}!M${taskId}`, valueInputOption:'RAW',
       resource:{ values:[[JSON.stringify(comments)]] }
