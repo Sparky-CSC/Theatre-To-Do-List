@@ -21,6 +21,19 @@
     .header h1{font-size:2em;margin-bottom:5px}
     .header p{font-size:.9em;opacity:.9}
     .header-right{display:flex;gap:10px;align-items:center}
+    
+    .list-selector{
+      background:rgba(255,255,255,.2);
+      padding:8px 12px;
+      border-radius:20px;
+      border:none;
+      color:#fff;
+      font-size:.9em;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .list-selector:hover{background:rgba(255,255,255,.3)}
+    
     .dark-mode-toggle{background:rgba(255,255,255,.2);border:none;color:#fff;padding:8px 12px;border-radius:20px;cursor:pointer;font-size:1.2em;transition:background .3s}
     .dark-mode-toggle:hover{background:rgba(255,255,255,.3)}
     .user-info{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.2);padding:8px 12px;border-radius:25px;font-size:.85em}
@@ -131,7 +144,6 @@
     .btn-cancel{background:#6c757d}
     #mainContent{display:none}
 
-    /* Mobile FAB for Create Task */
     .fab-create{
       position: fixed;
       right: 18px;
@@ -154,11 +166,31 @@
     @media (max-width: 768px){
       .fab-create.show{ display: flex; }
     }
+    
+    .email-webhook-info{
+      background:#fff3cd;
+      border-left:4px solid #ffc107;
+      padding:15px;
+      border-radius:6px;
+      margin-top:15px;
+      font-size:.9em;
+    }
+    .email-webhook-info h4{
+      color:#856404;
+      margin-bottom:8px;
+    }
+    .email-webhook-info code{
+      background:#f8f9fa;
+      padding:2px 6px;
+      border-radius:4px;
+      font-family:monospace;
+      font-size:.85em;
+    }
 
     @media (max-width:768px){
       .header{flex-direction:column;gap:10px}
       .header h1{font-size:1.5em}
-      .header-right{width:100%;justify-content:center}
+      .header-right{width:100%;justify-content:center;flex-wrap:wrap}
       .action-bar{flex-direction:column;align-items:stretch}
       .search-box{width:100%}
       .btn{width:100%;justify-content:center}
@@ -186,9 +218,12 @@
     <div class="header">
       <div class="header-left">
         <h1>🎭 Theatre To-Do List</h1>
-        <p>Connected to Google Sheets</p>
+        <p id="listName">Main List</p>
       </div>
       <div class="header-right">
+        <select class="list-selector" id="listSelector" onchange="switchList()" style="display:none;">
+          <option value="Sheet1">Main List</option>
+        </select>
         <button class="dark-mode-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode">🌙</button>
         <div class="user-info" id="userInfo" style="display:none;">
           <img id="userAvatar" class="user-avatar" alt="User"/>
@@ -226,6 +261,7 @@
       <div class="action-bar">
         <input type="text" class="search-box" id="searchBox" placeholder="🔍 Search tasks..." oninput="applyFilters()"/>
         <button class="btn btn-success" onclick="openTaskModal()" id="createBtn" style="display:none;">➕ Create Task</button>
+        <button class="btn btn-info" onclick="openNewListModal()">📋 New List</button>
         <button class="btn toggle-section-btn" onclick="toggleExports()"><span id="exportToggleIcon">📤</span> Exports</button>
         <button class="btn toggle-section-btn" onclick="toggleFilters()"><span id="filterToggleIcon">🔽</span> Filters</button>
         <div class="export-buttons" id="exportButtons">
@@ -314,7 +350,6 @@
             </div>
           </div>
 
-          <!-- REPLACED: Select -> Input + Datalist for cross-device add & pick -->
           <div class="form-group">
             <label for="taskAssignedToInput">Assign To</label>
             <input type="text" id="taskAssignedToInput" list="assignList" placeholder="Type a name or pick"/>
@@ -331,14 +366,29 @@
               <label for="notificationEmails">Email Addresses (press Enter to add)</label>
               <input type="email" id="notificationEmails" placeholder="Enter email and press Enter"/>
               <div id="emailTags" class="email-tags"></div>
-              <div class="notification-info">💡 Email notifications will be sent when this task is marked complete.</div>
+              <div class="notification-info">💡 Emails will be sent when this task is marked complete.</div>
+              
+              <div class="email-webhook-info">
+                <h4>📧 Email Setup Required</h4>
+                <p>To enable email notifications, you need to set up a webhook service:</p>
+                <ol style="margin:10px 0 10px 20px;font-size:.9em">
+                  <li>Use <strong>Zapier</strong>, <strong>Make.com</strong>, or <strong>n8n</strong></li>
+                  <li>Create trigger: "Webhook" → "Catch Hook"</li>
+                  <li>Add action: "Email" → "Send Email"</li>
+                  <li>Copy webhook URL and paste below</li>
+                </ol>
+                <input type="url" id="emailWebhookUrl" placeholder="https://hooks.zapier.com/..." 
+                  style="width:100%;padding:8px;border-radius:4px;border:1px solid #ddd;margin-top:8px"/>
+                <p style="margin-top:8px;font-size:.85em;">💡 Save webhook URL once - it will be stored for all tasks</p>
+              </div>
             </div>
           </div>
 
           <div class="form-group">
             <label for="taskFiles">Attachments</label>
             <div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('fileInput').click()">
-              <p>📎 Click to upload files or drag and drop</p>
+              <p>📎 Click to upload files or drag and drop
+<p>📎 Click to upload files or drag and drop</p>
               <p style="font-size:.85em;color:var(--text-secondary);">Max 5MB per file</p>
             </div>
             <input type="file" id="fileInput" multiple style="display:none" onchange="handleFileSelect(event)"/>
@@ -353,23 +403,39 @@
     </div>
   </div>
 
-  <!-- Mobile floating Create button (admins only; shown via JS on small screens) -->
+  <!-- New List Modal -->
+  <div id="newListModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Create New List</h2>
+        <span class="close" onclick="closeNewListModal()">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="newListForm" onsubmit="createNewList(event)">
+          <div class="form-group">
+            <label for="newListName">List Name *</label>
+            <input type="text" id="newListName" required placeholder="e.g., Props, Costumes, Lighting"/>
+          </div>
+          <div class="notification-info">
+            💡 <strong>Personal Lists:</strong> Create your own lists for different departments or projects. 
+            Each list gets its own sheet in the workbook and you can switch between them easily.
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-cancel" onclick="closeNewListModal()">Cancel</button>
+        <button class="btn btn-success" onclick="document.getElementById('newListForm').requestSubmit()">Create List</button>
+      </div>
+    </div>
+  </div>
+
   <button id="mobileCreateFab" class="fab-create" onclick="openTaskModal()" aria-label="Create Task" title="Create Task">➕</button>
 
-  <!-- libs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <!-- App script -->
   <script>
-/* ============================
-   Stable Remember Me + One Tap (first-time only)
-   - Dropdown (Category) & type-ahead (Assign To) from sheet data
-   - Optional Due Time saved as YYYY-MM-DD or YYYY-MM-DDTHH:MM
-   - Mobile FAB for Create (admins, small screens)
-   ============================ */
-
 const CLIENT_ID = '429266563329-677t97fuhed0v47p5odrfog71qhcqdh6.apps.googleusercontent.com';
 const API_KEY   = 'AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A';
 const SHEET_ID  = '1z2Pw0ZwDMYpD7-NbaM_HMPqaE62Lyla1nAstbUziJLY';
@@ -382,6 +448,11 @@ const SCOPES    = [
 
 const ADMIN_EMAILS = ['myork@culver.edu','hheaton@culver.edu','dlane@culver.edu'];
 
+// CORRECT COLUMN MAPPING to match your spreadsheet:
+// A=Task, B=Description, C=Priority, D=Due Date, E=Due Time, F=Assigned To
+// G=Completed, H=Completed By, I=Date Completed, J=Notify, K=Notification Emails
+// L=Category, M=Comments, N=Created By
+
 let tokenClient;
 let accessToken = null;
 let currentUser = null;
@@ -391,15 +462,15 @@ let gisReady = false;
 let oneTapReady = false;
 let refreshTimer = null;
 
-// app state
 let tasks = [];
 let allTasks = [];
 let notificationEmails = [];
 let uploadedFiles = [];
 let editingTaskId = null;
 let taskComments = {};
+let currentSheet = 'Sheet1';
+let availableSheets = [];
 
-// ---------- Utility ----------
 function isSecureContextForOneTap(){
   return location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 }
@@ -429,7 +500,6 @@ function toggleMobileFab(show){
   fab.classList.toggle('show', !!show);
 }
 
-// ---------- Loaders ----------
 function gapiLoaded(){ gapi.load('client', initializeGapiClient); }
 async function initializeGapiClient(){
   await gapi.client.init({ apiKey: API_KEY, discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'] });
@@ -447,7 +517,6 @@ function gisLoaded(){
 }
 function gsiIdLoaded(){ oneTapReady = true; tryStartAuthFlow(); }
 
-// ---------- Bootstrap auth decision ----------
 function tryStartAuthFlow(){
   if(!gapiReady || !gisReady || !oneTapReady) return;
 
@@ -465,7 +534,6 @@ function tryStartAuthFlow(){
   }
 }
 
-// ---------- One Tap (first-time) ----------
 function initAndPromptOneTap(){
   sessionStorage.setItem('oneTapShown','true');
 
@@ -486,14 +554,12 @@ function handleOneTapCredential(response){
   const name    = payload.name || payload.given_name || '';
   const picture = payload.picture || '';
 
-  // provisional header UI
   setHeaderUserUI({ name, email, picture });
 
   if(email){ localStorage.setItem('loginHint', email); }
   tokenClient.requestAccessToken({ prompt: '', login_hint: email || undefined });
 }
 
-// ---------- OAuth flow ----------
 function onTokenResponse(rsp){
   if(rsp && rsp.error){
     showLogin();
@@ -541,18 +607,15 @@ function onSignInSuccess(){
       }
       isAdmin = !!data?.email && ADMIN_EMAILS.includes(data.email.toLowerCase());
 
-      // header UI
       setHeaderUserUI({ name: displayName, email: data.email, picture, isAdmin });
 
-      // desktop Create button
       const createButton = document.getElementById('createBtn');
       if(createButton) createButton.style.display = isAdmin ? 'inline-flex' : 'none';
 
-      // mobile FAB
       toggleMobileFab(isAdmin);
 
       loadToggleStates();
-      loadTasks();
+      loadAvailableSheets();
     })
     .catch(err=>{
       console.error('userinfo error:', err);
@@ -597,31 +660,134 @@ function showLogin(){
   toggleMobileFab(false);
 }
 
-// ---------- Sheets + UI ----------
+async function loadAvailableSheets(){
+  try{
+    const response = await gapi.client.sheets.spreadsheets.get({
+      spreadsheetId: SHEET_ID
+    });
+    
+    availableSheets = response.result.sheets.map(s => ({
+      title: s.properties.title,
+      sheetId: s.properties.sheetId
+    }));
+    
+    const selector = document.getElementById('listSelector');
+    selector.innerHTML = availableSheets.map(s => 
+      `<option value="${s.title}">${s.title}</option>`
+    ).join('');
+    
+    selector.style.display = availableSheets.length > 1 ? 'inline-block' : 'none';
+    
+    const savedSheet = localStorage.getItem('currentSheet');
+    if(savedSheet && availableSheets.find(s => s.title === savedSheet)){
+      currentSheet = savedSheet;
+      selector.value = currentSheet;
+    }
+    
+    loadTasks();
+  }catch(err){
+    console.error('Error loading sheets:', err);
+    loadTasks();
+  }
+}
+
+function switchList(){
+  const selector = document.getElementById('listSelector');
+  currentSheet = selector.value;
+  localStorage.setItem('currentSheet', currentSheet);
+  document.getElementById('listName').textContent = currentSheet;
+  loadTasks();
+}
+
+function openNewListModal(){
+  document.getElementById('newListModal').style.display = 'block';
+}
+
+function closeNewListModal(){
+  document.getElementById('newListModal').style.display = 'none';
+  document.getElementById('newListForm').reset();
+}
+
+async function createNewList(e){
+  e.preventDefault();
+  const listName = document.getElementById('newListName').value.trim();
+  if(!listName) return;
+  
+  try{
+    if(availableSheets.find(s => s.title === listName)){
+      alert('A list with this name already exists!');
+      return;
+    }
+    
+    await gapi.client.sheets.spreadsheets.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      resource: {
+        requests: [{
+          addSheet: {
+            properties: {
+              title: listName
+            }
+          }
+        }]
+      }
+    });
+    
+    // CORRECT HEADERS for your spreadsheet structure
+    await gapi.client.sheets.spreadsheets.values.update({
+      spreadsheetId: SHEET_ID,
+      range: `${listName}!A1:N1`,
+      valueInputOption: 'RAW',
+      resource: {
+        values: [['Task','Description','Priority','Due Date','Due Time','Assigned To','Completed','Completed By','Date Completed','Notify','Notification Emails','Category','Comments','Created By']]
+      }
+    });
+    
+    const msg = document.createElement('div');
+    msg.className = 'success';
+    msg.textContent = `✅ List "${listName}" created successfully!`;
+    document.getElementById('todoList').insertBefore(msg, document.getElementById('todoList').firstChild);
+    setTimeout(() => msg.remove(), 2000);
+    
+    closeNewListModal();
+    loadAvailableSheets();
+    
+    currentSheet = listName;
+    localStorage.setItem('currentSheet', currentSheet);
+    document.getElementById('listSelector').value = currentSheet;
+    document.getElementById('listName').textContent = currentSheet;
+    loadTasks();
+  }catch(err){
+    alert('Error creating list: ' + err.message);
+  }
+}
+
 async function loadTasks(){
   if(!accessToken) return;
   const todoList = document.getElementById('todoList');
   todoList.innerHTML = '<div class="loading">Loading tasks...</div>';
   try{
     const response = await gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: SHEET_ID, range: 'Sheet1!A2:M'
+      spreadsheetId: SHEET_ID, range: `${currentSheet}!A2:N`
     });
     const rows = response.result.values || [];
+    
+    // CORRECTED MAPPING to match your columns
     allTasks = rows.map((row,idx)=>({
       id: idx+2,
-      task: row[0]||'',
-      description: row[1]||'',
-      priority: row[2]||'Medium',
-      createdBy: row[3]||'',
-      completed: row[4]==='TRUE',
-      completedBy: row[5]||'',
-      dateCompleted: row[6]||'',
-      notify: row[7]==='TRUE',
-      notificationEmails: row[8]||'',
-      category: row[9]||'',
-      dueDate: row[10]||'',
-      assignedTo: row[11]||'',
-      comments: row[12]||''
+      task: row[0]||'',              // A: Task
+      description: row[1]||'',        // B: Description
+      priority: row[2]||'Medium',     // C: Priority
+      dueDate: row[3]||'',            // D: Due Date
+      dueTime: row[4]||'',            // E: Due Time
+      assignedTo: row[5]||'',         // F: Assigned To
+      completed: row[6]==='TRUE',     // G: Completed
+      completedBy: row[7]||'',        // H: Completed By
+      dateCompleted: row[8]||'',      // I: Date Completed
+      notify: row[9]==='TRUE',        // J: Notify
+      notificationEmails: row[10]||'',// K: Notification Emails
+      category: row[11]||'',          // L: Category
+      comments: row[12]||'',          // M: Comments
+      createdBy: row[13]||''          // N: Created By
     })).filter(t=>!t.completed);
 
     const order = {High:1, Medium:2, Low:3};
@@ -659,23 +825,24 @@ function populateFilters(){
   assignedSelect.innerHTML='<option value="all">All</option>'+assignees.map(a=>`<option value="${a}">${a}</option>`).join('');
 }
 
-// Populate Category dropdown + AssignTo datalist in the Task Modal from Sheet data
 function populateFormLists(selected = {}){
   const categories=uniqueNonEmpty(allTasks.map(t=>t.category));
   const assignees=uniqueNonEmpty(allTasks.map(t=>t.assignedTo));
 
-  // Category select
   const catSel = document.getElementById('taskCategorySelect');
   catSel.innerHTML = '<option value="">(none)</option>' + categories.map(c=>`<option value="${c}">${c}</option>`).join('');
   if(selected.category) catSel.value = selected.category;
 
-  // Assign To datalist
   const dl = document.getElementById('assignList');
   dl.innerHTML = assignees.map(a => `<option value="${a}"></option>`).join('');
 
-  // If editing with a value, set input value
   const asgInput = document.getElementById('taskAssignedToInput');
   if(selected.assignedTo) asgInput.value = selected.assignedTo;
+  
+  const webhookUrl = localStorage.getItem('emailWebhookUrl');
+  if(webhookUrl){
+    document.getElementById('emailWebhookUrl').value = webhookUrl;
+  }
 }
 
 function applyFilters(){
@@ -727,7 +894,7 @@ function applyFilters(){
 }
 
 function updateStats(){
-  gapi.client.sheets.spreadsheets.values.get({ spreadsheetId:SHEET_ID, range:'Sheet1!E2:E' })
+  gapi.client.sheets.spreadsheets.values.get({ spreadsheetId:SHEET_ID, range:`${currentSheet}!G2:G` })
     .then(res=>{
       const col=res.result.values||[];
       const completed=col.filter(r=>r[0]==='TRUE').length;
@@ -750,7 +917,7 @@ function renderTasks(){
   list.innerHTML = tasks.map(t=>{
     const comments = t.comments ? JSON.parse(t.comments) : [];
     const overdue = isOverdue(t.dueDate);
-    const dueDisp = t.dueDate ? formatDueDisplay(t.dueDate) : '';
+    const dueDisp = t.dueDate ? (t.dueTime ? `${formatDueDisplay(t.dueDate)} ${t.dueTime}` : formatDueDisplay(t.dueDate)) : '';
     return `
       <div class="todo-item priority-${t.priority.toLowerCase()}" data-id="${t.id}">
         <div class="todo-item-header">
@@ -810,15 +977,19 @@ async function toggleTask(taskId){
   const today=new Date().toISOString().split('T')[0];
   const task=allTasks.find(t=>t.id===taskId);
   try{
+    // Update columns G, H, I (Completed, Completed By, Date Completed)
     await gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId:SHEET_ID, range:`Sheet1!E${taskId}:G${taskId}`, valueInputOption:'RAW',
+      spreadsheetId:SHEET_ID, range:`${currentSheet}!G${taskId}:I${taskId}`, valueInputOption:'RAW',
       resource:{ values:[['TRUE', initials, today]] }
     });
-    if(task && task.notify && task.notificationEmails) sendNotification(task, initials, today);
+    if(task && task.notify && task.notificationEmails) {
+      await sendNotificationEmail(task, initials, today);
+    }
     const idx=allTasks.findIndex(t=>t.id===taskId); if(idx!==-1) allTasks.splice(idx,1);
     const item=document.querySelector(`[data-id="${taskId}"]`);
     item.style.background='#4caf50'; item.style.color='#fff';
-    const msg=document.createElement('div'); msg.className='success'; msg.textContent='✅ Task completed! Removed from list.'+(task && task.notify ? ' 📧 Notifications sent!':'');
+    const msg=document.createElement('div'); msg.className='success'; 
+    msg.textContent='✅ Task completed! Removed from list.'+(task && task.notify ? ' 📧 Email notifications sent!':'');
     item.parentElement.insertBefore(msg,item);
     setTimeout(()=>{ msg.remove(); item.remove(); updateStats(); applyFilters(); },1500);
   }catch(e){
@@ -826,17 +997,61 @@ async function toggleTask(taskId){
     const cb=document.querySelector(`[data-id="${taskId}"] .checkbox`); if(cb) cb.checked=false;
   }
 }
-function sendNotification(task,completedBy,dateCompleted){
-  const emails=task.notificationEmails.split(',').map(e=>e.trim());
-  console.log('📧 Notify:', emails, {task:task.task,completedBy,dateCompleted});
+
+async function sendNotificationEmail(task, completedBy, dateCompleted){
+  const webhookUrl = localStorage.getItem('emailWebhookUrl');
+  const emails = task.notificationEmails.split(',').map(e => e.trim());
+  
+  console.log('📧 Sending notifications to:', emails);
+  
+  if(!webhookUrl){
+    console.log('⚠️ No webhook URL configured. Emails not sent.');
+    return;
+  }
+  
+  try{
+    const payload = {
+      to: emails,
+      subject: `Task Completed: ${task.task}`,
+      body: `
+The following task has been marked as complete:
+
+Task: ${task.task}
+Description: ${task.description || 'N/A'}
+Priority: ${task.priority}
+Category: ${task.category || 'N/A'}
+Assigned To: ${task.assignedTo || 'Unassigned'}
+Due Date: ${task.dueDate ? (task.dueTime ? `${formatDueDisplay(task.dueDate)} ${task.dueTime}` : formatDueDisplay(task.dueDate)) : 'No due date'}
+
+Completed by: ${completedBy}
+Completed on: ${dateCompleted}
+Created by: ${task.createdBy}
+
+List: ${currentSheet}
+      `.trim()
+    };
+    
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if(!response.ok){
+      console.error('Webhook failed:', response.status, response.statusText);
+    } else {
+      console.log('✅ Emails sent successfully via webhook');
+    }
+  }catch(err){
+    console.error('Error sending notification emails:', err);
+  }
 }
 
-// ----- Modal / save / delete / comments -----
 function openTaskModal(){
   if(!isAdmin) return alert('Only administrators can create tasks.');
   editingTaskId=null; document.getElementById('modalTitle').textContent='Create New Task';
   document.getElementById('taskForm').reset();
-  populateFormLists(); // latest lists (including assignees)
+  populateFormLists();
   notificationEmails=[]; uploadedFiles=[];
   document.getElementById('emailTags').innerHTML=''; document.getElementById('fileList').innerHTML='';
   document.getElementById('emailInputGroup').classList.remove('active');
@@ -851,24 +1066,12 @@ function openEditTask(taskId){
   document.getElementById('modalTitle').textContent='Edit Task';
   document.getElementById('taskTitle').value=t.task;
   document.getElementById('taskDescription').value=t.description;
-  document.getElementById('taskPriority').value=t.priority;
+document.getElementById('taskPriority').value=t.priority;
 
   populateFormLists({ category: t.category || '', assignedTo: t.assignedTo || '' });
 
-  if(t.dueDate){
-    const hasTime = t.dueDate.includes('T');
-    if(hasTime){
-      const [d, tm] = t.dueDate.split('T');
-      document.getElementById('taskDueDate').value = d;
-      document.getElementById('taskDueTime').value = tm.slice(0,5);
-    }else{
-      document.getElementById('taskDueDate').value = t.dueDate;
-      document.getElementById('taskDueTime').value = '';
-    }
-  }else{
-    document.getElementById('taskDueDate').value = '';
-    document.getElementById('taskDueTime').value = '';
-  }
+  document.getElementById('taskDueDate').value = t.dueDate || '';
+  document.getElementById('taskDueTime').value = t.dueTime || '';
 
   document.getElementById('enableNotifications').checked=t.notify;
   if(t.notify && t.notificationEmails){
@@ -894,31 +1097,67 @@ async function saveTask(e){
   const category=document.getElementById('taskCategorySelect').value.trim();
   const dueDate=document.getElementById('taskDueDate').value;
   const dueTime=document.getElementById('taskDueTime').value;
-
-  // NEW: grab from input (free text OR suggestion)
   const assignedTo=document.getElementById('taskAssignedToInput').value.trim();
-
   const notify=document.getElementById('enableNotifications').checked;
   const emails=notificationEmails.join(',');
 
   if(!title) return alert('Please enter a task title!');
 
-  const dueValue = dueDate ? (dueTime ? `${dueDate}T${dueTime}` : dueDate) : '';
+  const webhookUrl = document.getElementById('emailWebhookUrl').value.trim();
+  if(webhookUrl){
+    localStorage.setItem('emailWebhookUrl', webhookUrl);
+  }
 
   try{
+    // CORRECTED COLUMN ORDER: A-N
+    // A=Task, B=Description, C=Priority, D=Due Date, E=Due Time, F=Assigned To
+    // G=Completed, H=Completed By, I=Date Completed, J=Notify, K=Notification Emails
+    // L=Category, M=Comments, N=Created By
+    
     if(editingTaskId){
       await gapi.client.sheets.spreadsheets.values.update({
-        spreadsheetId:SHEET_ID, range:`Sheet1!A${editingTaskId}:M${editingTaskId}`, valueInputOption:'RAW',
-        resource:{ values:[[title,description,priority,currentUser.name,'FALSE','','',notify?'TRUE':'FALSE',emails,category,dueValue,assignedTo,taskComments[editingTaskId] || '']] }
+        spreadsheetId:SHEET_ID, range:`${currentSheet}!A${editingTaskId}:N${editingTaskId}`, valueInputOption:'RAW',
+        resource:{ values:[[
+          title,                    // A: Task
+          description,              // B: Description
+          priority,                 // C: Priority
+          dueDate,                  // D: Due Date
+          dueTime,                  // E: Due Time
+          assignedTo,               // F: Assigned To
+          'FALSE',                  // G: Completed
+          '',                       // H: Completed By
+          '',                       // I: Date Completed
+          notify?'TRUE':'FALSE',    // J: Notify
+          emails,                   // K: Notification Emails
+          category,                 // L: Category
+          taskComments[editingTaskId] || '', // M: Comments
+          currentUser.name          // N: Created By
+        ]] }
       });
     }else{
       await gapi.client.sheets.spreadsheets.values.append({
-        spreadsheetId:SHEET_ID, range:'Sheet1!A:M', valueInputOption:'RAW',
-        resource:{ values:[[title,description,priority,currentUser.name,'FALSE','','',notify?'TRUE':'FALSE',emails,category,dueValue,assignedTo,'']] }
+        spreadsheetId:SHEET_ID, range:`${currentSheet}!A:N`, valueInputOption:'RAW',
+        resource:{ values:[[
+          title,                    // A: Task
+          description,              // B: Description
+          priority,                 // C: Priority
+          dueDate,                  // D: Due Date
+          dueTime,                  // E: Due Time
+          assignedTo,               // F: Assigned To
+          'FALSE',                  // G: Completed
+          '',                       // H: Completed By
+          '',                       // I: Date Completed
+          notify?'TRUE':'FALSE',    // J: Notify
+          emails,                   // K: Notification Emails
+          category,                 // L: Category
+          '',                       // M: Comments
+          currentUser.name          // N: Created By
+        ]] }
       });
     }
     const list=document.getElementById('todoList');
-    const msg=document.createElement('div'); msg.className='success'; msg.textContent=editingTaskId?'✅ Task updated successfully!':'✅ Task created successfully!';
+    const msg=document.createElement('div'); msg.className='success'; 
+    msg.textContent=editingTaskId?'✅ Task updated successfully!':'✅ Task created successfully!';
     list.insertBefore(msg,list.firstChild); setTimeout(()=>msg.remove(),2000);
 
     closeTaskModal(); loadTasks();
@@ -930,11 +1169,12 @@ async function deleteTask(taskId){
   if(!confirm('Are you sure you want to delete this task?')) return;
   try{
     await gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId:SHEET_ID, range:`Sheet1!A${taskId}:M${taskId}`, valueInputOption:'RAW',
-      resource:{ values:[['','','','','','','','','','','','','']] }
+      spreadsheetId:SHEET_ID, range:`${currentSheet}!A${taskId}:N${taskId}`, valueInputOption:'RAW',
+      resource:{ values:[['','','','','','','','','','','','','','']] }
     });
     const list=document.getElementById('todoList'); const msg=document.createElement('div');
-    msg.className='success'; msg.textContent='✅ Task deleted successfully!'; list.insertBefore(msg,list.firstChild);
+    msg.className='success'; msg.textContent='✅ Task deleted successfully!'; 
+    list.insertBefore(msg,list.firstChild);
     setTimeout(()=>msg.remove(),2000); loadTasks();
   }catch(err){ alert('Error deleting task: '+err.message); }
 }
@@ -945,96 +1185,164 @@ function toggleComments(taskId){
 }
 
 async function addComment(taskId){
-  const input=document.getElementById(`comment-input-${taskId}`); const text=input.value.trim(); if(!text) return;
-  const t=allTasks.find(x=>x.id===taskId); if(!t) return;
-  const comments=t.comments?JSON.parse(t.comments):[]; comments.push({author:currentUser.name,text,date:new Date().toISOString()});
+  const input=document.getElementById(`comment-input-${taskId}`); 
+  const text=input.value.trim(); 
+  if(!text) return;
+  const t=allTasks.find(x=>x.id===taskId); 
+  if(!t) return;
+  const comments=t.comments?JSON.parse(t.comments):[]; 
+  comments.push({author:currentUser.name,text,date:new Date().toISOString()});
   try{
+    // Column M is Comments
     await gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId:SHEET_ID, range:`Sheet1!M${taskId}`, valueInputOption:'RAW',
+      spreadsheetId:SHEET_ID, range:`${currentSheet}!M${taskId}`, valueInputOption:'RAW',
       resource:{ values:[[JSON.stringify(comments)]] }
     });
     input.value=''; loadTasks();
   }catch(err){ alert('Error adding comment: '+err.message); }
 }
 
-// Email tags
 function toggleEmailInput(){
-  const cb=document.getElementById('enableNotifications'); const group=document.getElementById('emailInputGroup');
-  if(cb.checked){ group.classList.add('active'); } else { group.classList.remove('active'); notificationEmails=[]; document.getElementById('emailTags').innerHTML=''; }
+  const cb=document.getElementById('enableNotifications'); 
+  const group=document.getElementById('emailInputGroup');
+  if(cb.checked){ 
+    group.classList.add('active'); 
+  } else { 
+    group.classList.remove('active'); 
+    notificationEmails=[]; 
+    document.getElementById('emailTags').innerHTML=''; 
+  }
 }
+
 document.addEventListener('DOMContentLoaded', ()=>{
   const emailInput=document.getElementById('notificationEmails');
-  if(emailInput){ emailInput.addEventListener('keypress',e=>{ if(e.key==='Enter'){ e.preventDefault(); addEmailTag(); } }); }
+  if(emailInput){ 
+    emailInput.addEventListener('keypress',e=>{ 
+      if(e.key==='Enter'){ 
+        e.preventDefault(); 
+        addEmailTag(); 
+      } 
+    }); 
+  }
 });
+
 function addEmailTag(){
-  const input=document.getElementById('notificationEmails'); const email=input.value.trim();
-  if(email && validateEmail(email) && !notificationEmails.includes(email)){ notificationEmails.push(email); renderEmailTags(); input.value=''; }
-  else if(notificationEmails.includes(email)){ alert('This email is already added!'); }
-  else if(email){ alert('Please enter a valid email address!'); }
+  const input=document.getElementById('notificationEmails'); 
+  const email=input.value.trim();
+  if(email && validateEmail(email) && !notificationEmails.includes(email)){ 
+    notificationEmails.push(email); 
+    renderEmailTags(); 
+    input.value=''; 
+  }
+  else if(notificationEmails.includes(email)){ 
+    alert('This email is already added!'); 
+  }
+  else if(email){ 
+    alert('Please enter a valid email address!'); 
+  }
 }
-function validateEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+function validateEmail(e){ 
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); 
+}
+
 function renderEmailTags(){
   const c=document.getElementById('emailTags');
-  c.innerHTML = notificationEmails.map((e,i)=>`<div class="email-tag">${e}<span class="remove" onclick="removeEmailTag(${i})">×</span></div>`).join('');
+  c.innerHTML = notificationEmails.map((e,i)=>
+    `<div class="email-tag">${e}<span class="remove" onclick="removeEmailTag(${i})">×</span></div>`
+  ).join('');
 }
-function removeEmailTag(i){ notificationEmails.splice(i,1); renderEmailTags(); }
 
-// Files
+function removeEmailTag(i){ 
+  notificationEmails.splice(i,1); 
+  renderEmailTags(); 
+}
+
 function handleFileSelect(ev){
   const files=Array.from(ev.target.files);
-  files.forEach(f=>{ if(f.size>5*1024*1024){ alert(`${f.name} is too large. Max size is 5MB.`); return; } uploadedFiles.push(f); });
+  files.forEach(f=>{ 
+    if(f.size>5*1024*1024){ 
+      alert(`${f.name} is too large. Max size is 5MB.`); 
+      return; 
+    } 
+    uploadedFiles.push(f); 
+  });
   renderFileList();
 }
+
 function renderFileList(){
   const c=document.getElementById('fileList');
   c.innerHTML = uploadedFiles.map((f,i)=>`
-    <div class="file-item"><span class="file-item-name">📎 ${f.name}</span><span class="file-item-remove" onclick="removeFile(${i})">×</span></div>
+    <div class="file-item">
+      <span class="file-item-name">📎 ${f.name}</span>
+      <span class="file-item-remove" onclick="removeFile(${i})">×</span>
+    </div>
   `).join('');
 }
-function removeFile(i){ uploadedFiles.splice(i,1); renderFileList(); }
 
-// Drag & drop
+function removeFile(i){ 
+  uploadedFiles.splice(i,1); 
+  renderFileList(); 
+}
+
 const fileUploadArea=document.getElementById('fileUploadArea');
 if(fileUploadArea){
-  fileUploadArea.addEventListener('dragover',e=>{ e.preventDefault(); fileUploadArea.classList.add('dragover'); });
-  fileUploadArea.addEventListener('dragleave',()=> fileUploadArea.classList.remove('dragover'));
+  fileUploadArea.addEventListener('dragover',e=>{ 
+    e.preventDefault(); 
+    fileUploadArea.classList.add('dragover'); 
+  });
+  fileUploadArea.addEventListener('dragleave',()=> 
+    fileUploadArea.classList.remove('dragover')
+  );
   fileUploadArea.addEventListener('drop',e=>{
-    e.preventDefault(); fileUploadArea.classList.remove('dragover');
+    e.preventDefault(); 
+    fileUploadArea.classList.remove('dragover');
     const files=Array.from(e.dataTransfer.files);
-    files.forEach(f=>{ if(f.size<=5*1024*1024) uploadedFiles.push(f); });
+    files.forEach(f=>{ 
+      if(f.size<=5*1024*1024) uploadedFiles.push(f); 
+    });
     renderFileList();
   });
 }
 
-// Dark mode
 function toggleDarkMode(){
   document.body.classList.toggle('dark-mode');
   const isDark=document.body.classList.contains('dark-mode');
   localStorage.setItem('darkMode',isDark);
   document.querySelector('.dark-mode-toggle').textContent = isDark ? '☀️' : '🌙';
 }
+
 if(localStorage.getItem('darkMode')==='true'){
   document.body.classList.add('dark-mode');
   document.querySelector('.dark-mode-toggle').textContent='☀️';
 }
 
-// Exports
 function exportToPDF(){
-  const { jsPDF } = window.jspdf; const doc=new jsPDF();
-  doc.setFontSize(18); doc.text('Theatre To-Do List',14,20);
-  doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`,14,28);
+  const { jsPDF } = window.jspdf; 
+  const doc=new jsPDF();
+  doc.setFontSize(18); 
+  doc.text(`Theatre To-Do List - ${currentSheet}`,14,20);
+  doc.setFontSize(10); 
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`,14,28);
   doc.text(`Total Tasks: ${tasks.length}`,14,34);
   const tableData=tasks.map(t=>[
     t.task,
     t.priority,
     t.category||'N/A',
     t.assignedTo||'Unassigned',
-    t.dueDate ? formatDueDisplay(t.dueDate) : 'No due date',
+    t.dueDate ? (t.dueTime ? `${formatDueDisplay(t.dueDate)} ${t.dueTime}` : formatDueDisplay(t.dueDate)) : 'No due date',
     t.createdBy
   ]);
-  doc.autoTable({ head:[['Task','Priority','Category','Assigned To','Due Date','Created By']], body:tableData, startY:40, styles:{fontSize:8}, headStyles:{fillColor:[102,126,234]}});
-  doc.save('theatre-todo-list.pdf');
+  doc.autoTable({ 
+    head:[['Task','Priority','Category','Assigned To','Due Date','Created By']], 
+    body:tableData, 
+    startY:40, 
+    styles:{fontSize:8}, 
+    headStyles:{fillColor:[102,126,234]}
+  });
+  doc.save(`${currentSheet}-todo-list.pdf`);
 }
+
 function exportToExcel(){
   const data=tasks.map(t=>({
     'Task':t.task,
@@ -1043,33 +1351,65 @@ function exportToExcel(){
     'Category':t.category||'',
     'Created By':t.createdBy,
     'Assigned To':t.assignedTo||'',
-    'Due Date':t.dueDate ? formatDueDisplay(t.dueDate) : '',
+    'Due Date':t.dueDate ? (t.dueTime ? `${formatDueDisplay(t.dueDate)} ${t.dueTime}` : formatDueDisplay(t.dueDate)) : '',
     'Notify':t.notify?'Yes':'No'
   }));
-  const ws=XLSX.utils.json_to_sheet(data); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Tasks'); XLSX.writeFile(wb,'theatre-todo-list.xlsx');
+  const ws=XLSX.utils.json_to_sheet(data); 
+  const wb=XLSX.utils.book_new(); 
+  XLSX.utils.book_append_sheet(wb,ws,'Tasks'); 
+  XLSX.writeFile(wb,`${currentSheet}-todo-list.xlsx`);
 }
 
-// UI toggles
 function toggleExports(){
-  const el=document.getElementById('exportButtons'); const icon=document.getElementById('exportToggleIcon');
-  if(el.classList.contains('hidden')){ el.classList.remove('hidden'); icon.textContent='📤'; localStorage.setItem('exportsVisible','true'); }
-  else{ el.classList.add('hidden'); icon.textContent='📥'; localStorage.setItem('exportsVisible','false'); }
+  const el=document.getElementById('exportButtons'); 
+  const icon=document.getElementById('exportToggleIcon');
+  if(el.classList.contains('hidden')){ 
+    el.classList.remove('hidden'); 
+    icon.textContent='📤'; 
+    localStorage.setItem('exportsVisible','true'); 
+  }
+  else{ 
+    el.classList.add('hidden'); 
+    icon.textContent='📥'; 
+    localStorage.setItem('exportsVisible','false'); 
+  }
 }
+
 function toggleFilters(){
-  const el=document.getElementById('filterSection'); const icon=document.getElementById('filterToggleIcon');
-  if(el.classList.contains('collapsed')){ el.classList.remove('collapsed'); icon.textContent='🔽'; localStorage.setItem('filtersVisible','true'); }
-  else{ el.classList.add('collapsed'); icon.textContent='▶️'; localStorage.setItem('filtersVisible','false'); }
+  const el=document.getElementById('filterSection'); 
+  const icon=document.getElementById('filterToggleIcon');
+  if(el.classList.contains('collapsed')){ 
+    el.classList.remove('collapsed'); 
+    icon.textContent='🔽'; 
+    localStorage.setItem('filtersVisible','true'); 
+  }
+  else{ 
+    el.classList.add('collapsed'); 
+    icon.textContent='▶️'; 
+    localStorage.setItem('filtersVisible','false'); 
+  }
 }
+
 function loadToggleStates(){
-  const ev=localStorage.getItem('exportsVisible'); const fv=localStorage.getItem('filtersVisible');
-  if(ev==='false'){ document.getElementById('exportButtons').classList.add('hidden'); document.getElementById('exportToggleIcon').textContent='📥'; }
-  if(fv==='false'){ document.getElementById('filterSection').classList.add('collapsed'); document.getElementById('filterToggleIcon').textContent='▶️'; }
+  const ev=localStorage.getItem('exportsVisible'); 
+  const fv=localStorage.getItem('filtersVisible');
+  if(ev==='false'){ 
+    document.getElementById('exportButtons').classList.add('hidden'); 
+    document.getElementById('exportToggleIcon').textContent='📥'; 
+  }
+  if(fv==='false'){ 
+    document.getElementById('filterSection').classList.add('collapsed'); 
+    document.getElementById('filterToggleIcon').textContent='▶️'; 
+  }
 }
 
-// close modal on outside click
-window.onclick=function(e){ const m=document.getElementById('taskModal'); if(e.target===m) closeTaskModal(); }
+window.onclick=function(e){ 
+  const taskModal=document.getElementById('taskModal'); 
+  const listModal=document.getElementById('newListModal');
+  if(e.target===taskModal) closeTaskModal(); 
+  if(e.target===listModal) closeNewListModal();
+}
 
-// expose handlers
 window.gapiLoaded=gapiLoaded;
 window.gisLoaded=gisLoaded;
 window.gsiIdLoaded=gsiIdLoaded;
@@ -1089,12 +1429,14 @@ window.exportToPDF=exportToPDF;
 window.exportToExcel=exportToExcel;
 window.toggleExports=toggleExports;
 window.toggleFilters=toggleFilters;
+window.openNewListModal=openNewListModal;
+window.closeNewListModal=closeNewListModal;
+window.createNewList=createNewList;
+window.switchList=switchList;
 
-// auto-refresh tasks (if signed in)
 setInterval(()=>{ if(accessToken) loadTasks(); }, 120000);
   </script>
 
-  <!-- Google APIs last -->
   <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
   <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded(); gsiIdLoaded();"></script>
 </body>
