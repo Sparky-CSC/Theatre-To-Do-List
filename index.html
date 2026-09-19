@@ -716,6 +716,16 @@ function formatDateDisplay(dueStr){
 }
 function uniqueNonEmpty(list){ return [...new Set(list.filter(Boolean))]; }
 function slugClass(v){ return String(v||'').toLowerCase().replace(/\s+/g,'-'); }
+function errMsg(err){
+  // gapi client rejections carry their real text at err.result.error.message,
+  // not err.message, so a plain "+err.message" often prints "undefined".
+  try{
+    if(err && err.result && err.result.error && err.result.error.message) return err.result.error.message;
+    if(err && err.message) return err.message;
+    if(typeof err === 'string') return err;
+    return JSON.stringify(err);
+  }catch(e){ return 'Unknown error (see browser console)'; }
+}
 function escapeHtml(s){
   return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
 }
@@ -891,10 +901,11 @@ async function discoverBoards(){
     else{ currentBoard = boards[0].prefix; }
     selector.value = currentBoard;
     updateBoardLabel();
+    await ensureSheetWidth();
     refreshCurrentView();
   }catch(err){
     console.error('Error discovering boards:', err);
-    document.getElementById('todoList').innerHTML = `<div class="error">Error loading spreadsheet: ${err.message||err}</div>`;
+    document.getElementById('todoList').innerHTML = `<div class="error">Error loading spreadsheet: ${errMsg(err)}</div>`;
   }
 }
 function updateBoardLabel(){
@@ -905,9 +916,40 @@ function switchBoard(){
   currentBoard = document.getElementById('listSelector').value;
   localStorage.setItem('currentBoard', currentBoard);
   updateBoardLabel();
-  refreshCurrentView();
+  ensureSheetWidth().then(refreshCurrentView);
 }
 function sheetName(view){ return currentBoard ? `${currentBoard} ${view}` : view; }
+
+// Some of the template's tabs (especially the original "Task List" sheet as
+// shipped) may not have a grid wide enough for the extra columns this app
+// appends (N:S for task sheets, O for Recurring, L for Task Bundles). Writing
+// beyond a sheet's current column count fails, so we widen any sheet that
+// needs it once per board, before the first write.
+const widthEnsuredBoards = new Set();
+async function ensureSheetWidth(){
+  if(widthEnsuredBoards.has(currentBoard)) return;
+  try{
+    const resp = await gapi.client.sheets.spreadsheets.get({ spreadsheetId: SHEET_ID });
+    const need = {};
+    need[sheetName('Task List')] = 19;
+    need[sheetName('Parked')] = 19;
+    need[sheetName('Done')] = 19;
+    need[sheetName('Recurring')] = 15;
+    need[sheetName('Task Bundles')] = 12;
+    const requests = [];
+    (resp.result.sheets||[]).forEach(s=>{
+      const title = s.properties.title;
+      const cur = (s.properties.gridProperties && s.properties.gridProperties.columnCount) || 26;
+      if(need[title] && cur < need[title]){
+        requests.push({ appendDimension: { sheetId: s.properties.sheetId, dimension:'COLUMNS', length: need[title]-cur } });
+      }
+    });
+    if(requests.length){
+      await gapi.client.sheets.spreadsheets.batchUpdate({ spreadsheetId: SHEET_ID, resource:{ requests } });
+    }
+    widthEnsuredBoards.add(currentBoard);
+  }catch(e){ console.warn('ensureSheetWidth failed (writes may fail if a sheet is too narrow):', e); }
+}
 function getTaskLayout(view){
   // Only the literal main "Task List" sheet (as shipped by the template) has an
   // extra summary row above its header; every other task sheet's header is row 1.
@@ -954,7 +996,7 @@ async function createNewBoard(e){
     document.getElementById('listSelector').value = currentBoard;
     updateBoardLabel();
     refreshCurrentView();
-  }catch(err){ alert('Error creating board: '+err.message); }
+  }catch(err){ alert('Error creating board: '+errMsg(err)); }
 }
 
 /* =========================================================================
@@ -980,6 +1022,7 @@ async function refreshCurrentView(silent){
   const list = document.getElementById('todoList');
   if(!silent) list.innerHTML = '<div class="loading">Loading...</div>';
   try{
+    await ensureSheetWidth();
     if(currentView==='list'){ await loadTaskListView(); }
     else if(currentView==='kanban'){ await loadKanbanView(); }
     else if(currentView==='parked'){ await loadParkedView(); }
@@ -988,7 +1031,7 @@ async function refreshCurrentView(silent){
     else if(currentView==='bundles'){ await loadBundlesView(); }
     updateStats();
   }catch(err){
-    list.innerHTML = `<div class="error">Error loading data: ${err.message||err}</div>`;
+    list.innerHTML = `<div class="error">Error loading data: ${errMsg(err)}</div>`;
   }
 }
 
@@ -1250,7 +1293,7 @@ async function quickComplete(taskId){
     showToast('✅ Task completed and moved to Done!'+(task.notify?' 📧 Email notifications sent!':''));
     refreshCurrentView();
   }catch(e){
-    alert('Error completing task: '+e.message);
+    alert('Error completing task: '+errMsg(e));
     const cb = document.querySelector(`[data-id="${taskId}"] .checkbox`); if(cb) cb.checked=false;
   }
 }
@@ -1262,7 +1305,7 @@ async function parkTask(taskId){
     await moveTask(task, 'Task List', 'Parked');
     showToast('⏸️ Task parked.');
     refreshCurrentView();
-  }catch(e){ alert('Error parking task: '+e.message); }
+  }catch(e){ alert('Error parking task: '+errMsg(e)); }
 }
 async function resumeTask(taskId){
   if(!isAdmin) return alert('Only administrators can resume tasks.');
@@ -1272,7 +1315,7 @@ async function resumeTask(taskId){
     await moveTask(task, 'Parked', 'Task List');
     showToast('▶️ Task resumed to active list.');
     refreshCurrentView();
-  }catch(e){ alert('Error resuming task: '+e.message); }
+  }catch(e){ alert('Error resuming task: '+errMsg(e)); }
 }
 async function reopenTask(taskId){
   if(!isAdmin) return alert('Only administrators can reopen tasks.');
@@ -1284,7 +1327,7 @@ async function reopenTask(taskId){
     await moveTask(task, 'Done', 'Task List');
     showToast('↩️ Task reopened to active list.');
     refreshCurrentView();
-  }catch(e){ alert('Error reopening task: '+e.message); }
+  }catch(e){ alert('Error reopening task: '+errMsg(e)); }
 }
 async function deleteTask(taskId, view){
   if(!isAdmin) return alert('Only administrators can delete tasks.');
@@ -1293,7 +1336,7 @@ async function deleteTask(taskId, view){
     await blankTaskRow(view, taskId);
     showToast('✅ Task deleted successfully!');
     refreshCurrentView();
-  }catch(err){ alert('Error deleting task: '+err.message); }
+  }catch(err){ alert('Error deleting task: '+errMsg(err)); }
 }
 function toggleComments(taskId){
   const el = document.getElementById(`comments-${taskId}`);
@@ -1313,7 +1356,7 @@ async function addComment(taskId, view){
     });
     input.value='';
     render();
-  }catch(err){ alert('Error adding comment: '+err.message); }
+  }catch(err){ alert('Error adding comment: '+errMsg(err)); }
 }
 
 /* =========================================================================
@@ -1440,7 +1483,7 @@ async function saveTask(e){
     showToast(isNew ? '✅ Task created successfully!' : '✅ Task updated successfully!');
     closeTaskModal();
     refreshCurrentView();
-  }catch(err){ alert('Error saving task: '+err.message); }
+  }catch(err){ alert('Error saving task: '+errMsg(err)); }
 }
 
 /* =========================================================================
@@ -1670,7 +1713,7 @@ async function saveRecurring(e){
     showToast(existing ? '✅ Recurring task updated!' : '✅ Recurring task created!');
     closeRecurringModal();
     refreshCurrentView();
-  }catch(err){ alert('Error saving recurring task: '+err.message); }
+  }catch(err){ alert('Error saving recurring task: '+errMsg(err)); }
 }
 async function deleteRecurring(id){
   if(!isAdmin) return;
@@ -1680,7 +1723,7 @@ async function deleteRecurring(id){
     await gapi.client.sheets.spreadsheets.values.update({ spreadsheetId:SHEET_ID, range:`${name}!A${id}:O${id}`, valueInputOption:'RAW', resource:{ values:[['','','','','','','','','','','','','','','']] } });
     showToast('✅ Recurring task deleted.');
     refreshCurrentView();
-  }catch(err){ alert('Error deleting recurring task: '+err.message); }
+  }catch(err){ alert('Error deleting recurring task: '+errMsg(err)); }
 }
 async function runRecurringNow(id){
   if(!isAdmin) return;
@@ -1866,7 +1909,7 @@ async function saveBundleTask(e){
     showToast(existing ? '✅ Bundle task updated!' : '✅ Bundle task created!');
     closeBundleTaskModal();
     refreshCurrentView();
-  }catch(err){ alert('Error saving bundle task: '+err.message); }
+  }catch(err){ alert('Error saving bundle task: '+errMsg(err)); }
 }
 async function deleteBundleTask(id){
   if(!isAdmin) return;
@@ -1876,7 +1919,7 @@ async function deleteBundleTask(id){
     await gapi.client.sheets.spreadsheets.values.update({ spreadsheetId:SHEET_ID, range:`${name}!A${id}:L${id}`, valueInputOption:'RAW', resource:{ values:[['','','','','','','','','','','','']] } });
     showToast('✅ Bundle task deleted.');
     refreshCurrentView();
-  }catch(err){ alert('Error deleting bundle task: '+err.message); }
+  }catch(err){ alert('Error deleting bundle task: '+errMsg(err)); }
 }
 async function addBundleToTaskList(encodedProject){
   if(!isAdmin) return;
@@ -1897,7 +1940,7 @@ async function addBundleToTaskList(encodedProject){
     }
     showToast(`✅ Added ${items.length} task(s) from "${project}" to your Task List!`);
     if(currentView==='list') refreshCurrentView();
-  }catch(err){ alert('Error adding bundle: '+err.message); }
+  }catch(err){ alert('Error adding bundle: '+errMsg(err)); }
 }
 
 /* =========================================================================
