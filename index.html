@@ -230,7 +230,7 @@
     <div class="header">
       <div class="header-left">
         <h1>🎭 Theatre To Do List
-        <p id="listName">Main Board</p>
+        <p id="listName">CS-C Theatre</p>
       </div>
       <div class="header-right">
         <select class="list-selector" id="listSelector" onchange="switchBoard()" style="display:none;"></select>
@@ -675,7 +675,7 @@ let refreshTimer = null;
 let pollTimer = null;
 
 let currentBoard = '';           // '' = the sheet's original / main board
-let boards = [{ prefix:'', label:'Main Board' }];
+let boards = [{ prefix:'', label:'CS-C Theatre' }];
 let currentView = 'list';        // list | kanban | parked | done | recurring | bundles
 
 let activeTasks = [];    // Task List (not overdue-filtered) rows for currentBoard
@@ -917,13 +917,13 @@ async function discoverBoards(){
     const titles = resp.result.sheets.map(s => s.properties.title);
     const found = [];
     titles.forEach(t=>{
-      if(t === 'Task List') found.push({ prefix:'', label:'Main Board' });
+      if(t === 'Task List') found.push({ prefix:'', label:'CS-C Theatre' });
       else if(t.endsWith(' Task List')){
         const prefix = t.slice(0, -(' Task List').length);
         found.push({ prefix, label: prefix });
       }
     });
-    boards = found.length ? found : [{ prefix:'', label:'Main Board' }];
+    boards = found.length ? found : [{ prefix:'', label:'CS-C Theatre' }];
 
     const selector = document.getElementById('listSelector');
     selector.innerHTML = boards.map(b => `<option value="${escapeHtml(b.prefix)}">${escapeHtml(b.label)}</option>`).join('');
@@ -1564,7 +1564,7 @@ Completed by: ${completedBy}
 Completed on: ${formatDateDisplay(dateCompleted)}
 Created by: ${task.createdBy}
 
-Board: ${currentBoard || 'Main Board'}
+Board: ${currentBoard || 'CS-C Theatre'}
       `.trim()
     };
     const response = await fetch(webhookUrl, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
