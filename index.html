@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Theatre Task Tracker</title>
+  <title>Theatre To Do List</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box}
     :root{--primary-gradient:linear-gradient(135deg,#667eea 0%,#764ba2 100%);--bg-light:#f8f9fa;--border-color:#e9ecef;--text-primary:#333;--text-secondary:#666}
@@ -229,7 +229,7 @@
   <div class="container">
     <div class="header">
       <div class="header-left">
-        <h1>🎭 Theatre Task Tracker</h1>
+        <h1>🎭 Theatre To Do List
         <p id="listName">Main Board</p>
       </div>
       <div class="header-right">
@@ -244,7 +244,7 @@
     </div>
 
     <div class="login-screen" id="loginScreen">
-      <h2>Welcome to the Theatre Task Tracker</h2>
+      <h2>Welcome to the Theatre To Do List</h2>
       <p>Sign in with Google to view and manage your team's tasks</p>
       <button class="google-signin-btn" onclick="handleSignIn()">
         <svg class="google-icon" viewBox="0 0 24 24">
@@ -617,6 +617,13 @@
 const CLIENT_ID = '429266563329-677t97fuhed0v47p5odrfog71qhcqdh6.apps.googleusercontent.com';
 const API_KEY   = 'AIzaSyBgaa8xdZdWErS2zm0g-P15Gu-F-XBLc8A';
 const SHEET_ID  = '1MxfVQe1AUxXoKeEKfm0kOK581VyAYWHrXUNF4r-g9Qw'; // Customizable Automated Task Tracker Template
+
+// Paste the Web App URL from your Apps Script deployment here (see
+// TaskTracker_AppsScript.gs). This lets any signed-in group member complete
+// tasks / add comments even if their own Google account only has Viewer
+// access to the spreadsheet — everything else (create/edit/delete/etc.)
+// still goes directly through the signed-in admin's own Editor access.
+const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
 const SCOPES    = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/userinfo.email',
@@ -720,14 +727,40 @@ function errMsg(err){
   // gapi client rejections carry their real text at err.result.error.message,
   // not err.message, so a plain "+err.message" often prints "undefined".
   try{
-    if(err && err.result && err.result.error && err.result.error.message) return err.result.error.message;
-    if(err && err.message) return err.message;
+    if(err === undefined || err === null) return 'Unknown error (no error object was thrown — check the browser console for the full stack trace, right above this alert)';
+    if(err.result && err.result.error && err.result.error.message) return err.result.error.message;
+    if(err.message) return err.message;
     if(typeof err === 'string') return err;
-    return JSON.stringify(err);
+    const asJson = JSON.stringify(err);
+    return (asJson && asJson !== '{}') ? asJson : String(err);
   }catch(e){ return 'Unknown error (see browser console)'; }
 }
+window.addEventListener('unhandledrejection', function(ev){
+  console.error('Unhandled promise rejection:', ev.reason);
+});
+console.log('Theatre To Do List build: 2026-09-19-v3 (error-message + sheet-width fix)');
 function escapeHtml(s){
   return String(s==null?'':s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+/**
+ * Calls the Apps Script backend for actions any signed-in group member may
+ * perform (completing a task, adding a comment) without needing Editor
+ * access to the sheet themselves. Sent as text/plain to avoid a CORS
+ * preflight request, which Apps Script web apps don't handle well.
+ */
+async function callAppsScript(action, payload){
+  if(!APPS_SCRIPT_URL || APPS_SCRIPT_URL.indexOf('PASTE_YOUR') === 0){
+    throw new Error('The Apps Script backend URL has not been configured yet (APPS_SCRIPT_URL is still a placeholder). See TaskTracker_AppsScript.gs for setup steps.');
+  }
+  const resp = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, accessToken, ...payload })
+  });
+  let data;
+  try{ data = await resp.json(); }catch(e){ throw new Error('Unexpected response from the Apps Script backend (HTTP '+resp.status+').'); }
+  if(!data || !data.ok){ throw new Error((data && data.error) || 'The Apps Script backend rejected the request.'); }
+  return data;
 }
 function toggleMobileFab(show){
   const fab = document.getElementById('mobileCreateFab');
@@ -996,7 +1029,7 @@ async function createNewBoard(e){
     document.getElementById('listSelector').value = currentBoard;
     updateBoardLabel();
     refreshCurrentView();
-  }catch(err){ alert('Error creating board: '+errMsg(err)); }
+  }catch(err){ console.error('createNewBoard failed:', err); alert('Error creating board: '+errMsg(err)); }
 }
 
 /* =========================================================================
@@ -1284,16 +1317,23 @@ async function quickComplete(taskId){
   const task = activeTasks.find(t=>t.id===taskId);
   if(!task) return;
   try{
+    // Routed through the Apps Script backend so anyone signed in can complete
+    // a task, even with only Viewer access to the sheet — see
+    // TaskTracker_AppsScript.gs. Admins work fine through this same path too.
+    const result = await callAppsScript('completeTask', {
+      sheetName: sheetName('Task List'),
+      doneSheetName: sheetName('Done'),
+      rowNum: task.id,
+      initials
+    });
     task.progress = 'Done';
-    task.completed = todayStr();
+    task.completed = result.completedOn || todayStr();
     task.completedBy = initials;
-    if(!task.started) task.started = todayStr();
-    await moveTask(task, 'Task List', 'Done');
     if(task.notify && task.notifyEmails){ await sendNotificationEmail(task, initials, task.completed); }
     showToast('✅ Task completed and moved to Done!'+(task.notify?' 📧 Email notifications sent!':''));
     refreshCurrentView();
   }catch(e){
-    alert('Error completing task: '+errMsg(e));
+    console.error('quickComplete failed:', e); alert('Error completing task: '+errMsg(e));
     const cb = document.querySelector(`[data-id="${taskId}"] .checkbox`); if(cb) cb.checked=false;
   }
 }
@@ -1305,7 +1345,7 @@ async function parkTask(taskId){
     await moveTask(task, 'Task List', 'Parked');
     showToast('⏸️ Task parked.');
     refreshCurrentView();
-  }catch(e){ alert('Error parking task: '+errMsg(e)); }
+  }catch(e){ console.error('parkTask failed:', e); alert('Error parking task: '+errMsg(e)); }
 }
 async function resumeTask(taskId){
   if(!isAdmin) return alert('Only administrators can resume tasks.');
@@ -1315,7 +1355,7 @@ async function resumeTask(taskId){
     await moveTask(task, 'Parked', 'Task List');
     showToast('▶️ Task resumed to active list.');
     refreshCurrentView();
-  }catch(e){ alert('Error resuming task: '+errMsg(e)); }
+  }catch(e){ console.error('resumeTask failed:', e); alert('Error resuming task: '+errMsg(e)); }
 }
 async function reopenTask(taskId){
   if(!isAdmin) return alert('Only administrators can reopen tasks.');
@@ -1327,7 +1367,7 @@ async function reopenTask(taskId){
     await moveTask(task, 'Done', 'Task List');
     showToast('↩️ Task reopened to active list.');
     refreshCurrentView();
-  }catch(e){ alert('Error reopening task: '+errMsg(e)); }
+  }catch(e){ console.error('reopenTask failed:', e); alert('Error reopening task: '+errMsg(e)); }
 }
 async function deleteTask(taskId, view){
   if(!isAdmin) return alert('Only administrators can delete tasks.');
@@ -1336,7 +1376,7 @@ async function deleteTask(taskId, view){
     await blankTaskRow(view, taskId);
     showToast('✅ Task deleted successfully!');
     refreshCurrentView();
-  }catch(err){ alert('Error deleting task: '+errMsg(err)); }
+  }catch(err){ console.error('deleteTask failed:', err); alert('Error deleting task: '+errMsg(err)); }
 }
 function toggleComments(taskId){
   const el = document.getElementById(`comments-${taskId}`);
@@ -1347,16 +1387,19 @@ async function addComment(taskId, view){
   const text = input.value.trim(); if(!text) return;
   const arr = view==='Task List' ? activeTasks : view==='Parked' ? parkedTasks : doneTasks;
   const t = arr.find(x=>x.id===taskId); if(!t) return;
-  const comments = t.comments ? safeParseJSON(t.comments) : [];
-  comments.push({ author: currentUser.name, text, date: new Date().toISOString() });
-  t.comments = JSON.stringify(comments);
   try{
-    await gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId: SHEET_ID, range: `${sheetName(view)}!S${taskId}`, valueInputOption:'RAW', resource:{ values:[[t.comments]] }
+    // Routed through the Apps Script backend so anyone signed in can comment,
+    // even with only Viewer access to the sheet — see TaskTracker_AppsScript.gs.
+    const result = await callAppsScript('addComment', {
+      sheetName: sheetName(view),
+      rowNum: taskId,
+      author: currentUser.name,
+      text
     });
+    t.comments = result.comments || t.comments;
     input.value='';
     render();
-  }catch(err){ alert('Error adding comment: '+errMsg(err)); }
+  }catch(err){ console.error('addComment failed:', err); alert('Error adding comment: '+errMsg(err)); }
 }
 
 /* =========================================================================
@@ -1420,53 +1463,57 @@ function closeTaskModal(){
 async function saveTask(e){
   e.preventDefault();
   if(!isAdmin) return alert('Only administrators can save tasks.');
+  if(!accessToken || !currentUser){
+    alert('Your Google session seems to have expired. Please refresh the page and sign in again, then retry.');
+    return;
+  }
 
   const title = document.getElementById('taskTitle').value.trim();
   if(!title) return alert('Please enter a task title!');
 
-  const webhookUrl = document.getElementById('emailWebhookUrl').value.trim();
-  if(webhookUrl) localStorage.setItem('emailWebhookUrl', webhookUrl);
-
-  const progress = document.getElementById('taskProgress').value;
-  const isNew = editingTaskId === null;
-  const existing = isNew ? null : (editingTaskSheet==='Task List'?activeTasks:editingTaskSheet==='Parked'?parkedTasks:doneTasks).find(x=>x.id===editingTaskId);
-
-  const task = {
-    id: existing ? existing.id : null,
-    type: document.getElementById('taskType').value,
-    title,
-    progress,
-    priority: document.getElementById('taskPriority').value,
-    deadline: document.getElementById('taskDeadline').value,
-    website: document.getElementById('taskWebsite').value.trim(),
-    focus: document.getElementById('taskFocusSelect').value.trim(),
-    notes: document.getElementById('taskNotes').value.trim(),
-    added: existing ? (existing.added || todayStr()) : todayStr(),
-    started: existing ? existing.started : '',
-    completed: existing ? existing.completed : '',
-    completedBy: existing ? existing.completedBy : '',
-    assignedTo: document.getElementById('taskAssignedToInput').value.trim(),
-    createdBy: existing ? (existing.createdBy || currentUser.name) : currentUser.name,
-    notify: document.getElementById('enableNotifications').checked,
-    notifyEmails: notificationEmails.join(','),
-    comments: existing ? existing.comments : ''
-  };
-  if(progress==='Done' && !task.completed) task.completed = todayStr();
-  if(progress!=='Not Started' && !task.started) task.started = todayStr();
-
-  // Decide destination sheet based on Progress
-  let destSheet = editingTaskSheet || 'Task List';
-  if(progress==='Done') destSheet = 'Done';
-  else if(progress==='Parked') destSheet = 'Parked';
-  else destSheet = 'Task List';
-
-  if(progress==='Done' && !task.completedBy){
-    const initials = prompt('Enter initials to confirm this task is Done:');
-    if(!initials){ return; }
-    task.completedBy = initials.trim().toUpperCase();
-  }
-
   try{
+    const webhookUrl = document.getElementById('emailWebhookUrl').value.trim();
+    if(webhookUrl) localStorage.setItem('emailWebhookUrl', webhookUrl);
+
+    const progress = document.getElementById('taskProgress').value;
+    const isNew = editingTaskId === null;
+    const existing = isNew ? null : (editingTaskSheet==='Task List'?activeTasks:editingTaskSheet==='Parked'?parkedTasks:doneTasks).find(x=>x.id===editingTaskId);
+
+    const task = {
+      id: existing ? existing.id : null,
+      type: document.getElementById('taskType').value,
+      title,
+      progress,
+      priority: document.getElementById('taskPriority').value,
+      deadline: document.getElementById('taskDeadline').value,
+      website: document.getElementById('taskWebsite').value.trim(),
+      focus: document.getElementById('taskFocusSelect').value.trim(),
+      notes: document.getElementById('taskNotes').value.trim(),
+      added: existing ? (existing.added || todayStr()) : todayStr(),
+      started: existing ? existing.started : '',
+      completed: existing ? existing.completed : '',
+      completedBy: existing ? existing.completedBy : '',
+      assignedTo: document.getElementById('taskAssignedToInput').value.trim(),
+      createdBy: existing ? (existing.createdBy || currentUser.name) : currentUser.name,
+      notify: document.getElementById('enableNotifications').checked,
+      notifyEmails: notificationEmails.join(','),
+      comments: existing ? existing.comments : ''
+    };
+    if(progress==='Done' && !task.completed) task.completed = todayStr();
+    if(progress!=='Not Started' && !task.started) task.started = todayStr();
+
+    // Decide destination sheet based on Progress
+    let destSheet = editingTaskSheet || 'Task List';
+    if(progress==='Done') destSheet = 'Done';
+    else if(progress==='Parked') destSheet = 'Parked';
+    else destSheet = 'Task List';
+
+    if(progress==='Done' && !task.completedBy){
+      const initials = prompt('Enter initials to confirm this task is Done:');
+      if(!initials){ return; }
+      task.completedBy = initials.trim().toUpperCase();
+    }
+
     if(isNew){
       await appendTaskRow(destSheet, task);
     }else{
@@ -1483,7 +1530,10 @@ async function saveTask(e){
     showToast(isNew ? '✅ Task created successfully!' : '✅ Task updated successfully!');
     closeTaskModal();
     refreshCurrentView();
-  }catch(err){ alert('Error saving task: '+errMsg(err)); }
+  }catch(err){
+    console.error('saveTask failed. Full error object:', err, '| accessToken present:', !!accessToken, '| currentUser:', currentUser);
+    alert('Error saving task: '+errMsg(err));
+  }
 }
 
 /* =========================================================================
@@ -1713,7 +1763,7 @@ async function saveRecurring(e){
     showToast(existing ? '✅ Recurring task updated!' : '✅ Recurring task created!');
     closeRecurringModal();
     refreshCurrentView();
-  }catch(err){ alert('Error saving recurring task: '+errMsg(err)); }
+  }catch(err){ console.error('saveRecurring failed:', err); alert('Error saving recurring task: '+errMsg(err)); }
 }
 async function deleteRecurring(id){
   if(!isAdmin) return;
@@ -1723,7 +1773,7 @@ async function deleteRecurring(id){
     await gapi.client.sheets.spreadsheets.values.update({ spreadsheetId:SHEET_ID, range:`${name}!A${id}:O${id}`, valueInputOption:'RAW', resource:{ values:[['','','','','','','','','','','','','','','']] } });
     showToast('✅ Recurring task deleted.');
     refreshCurrentView();
-  }catch(err){ alert('Error deleting recurring task: '+errMsg(err)); }
+  }catch(err){ console.error('deleteRecurring failed:', err); alert('Error deleting recurring task: '+errMsg(err)); }
 }
 async function runRecurringNow(id){
   if(!isAdmin) return;
@@ -1909,7 +1959,7 @@ async function saveBundleTask(e){
     showToast(existing ? '✅ Bundle task updated!' : '✅ Bundle task created!');
     closeBundleTaskModal();
     refreshCurrentView();
-  }catch(err){ alert('Error saving bundle task: '+errMsg(err)); }
+  }catch(err){ console.error('saveBundleTask failed:', err); alert('Error saving bundle task: '+errMsg(err)); }
 }
 async function deleteBundleTask(id){
   if(!isAdmin) return;
@@ -1919,7 +1969,7 @@ async function deleteBundleTask(id){
     await gapi.client.sheets.spreadsheets.values.update({ spreadsheetId:SHEET_ID, range:`${name}!A${id}:L${id}`, valueInputOption:'RAW', resource:{ values:[['','','','','','','','','','','','']] } });
     showToast('✅ Bundle task deleted.');
     refreshCurrentView();
-  }catch(err){ alert('Error deleting bundle task: '+errMsg(err)); }
+  }catch(err){ console.error('deleteBundleTask failed:', err); alert('Error deleting bundle task: '+errMsg(err)); }
 }
 async function addBundleToTaskList(encodedProject){
   if(!isAdmin) return;
@@ -1940,7 +1990,7 @@ async function addBundleToTaskList(encodedProject){
     }
     showToast(`✅ Added ${items.length} task(s) from "${project}" to your Task List!`);
     if(currentView==='list') refreshCurrentView();
-  }catch(err){ alert('Error adding bundle: '+errMsg(err)); }
+  }catch(err){ console.error('addBundleToTaskList failed:', err); alert('Error adding bundle: '+errMsg(err)); }
 }
 
 /* =========================================================================
@@ -2039,7 +2089,7 @@ function currentExportSet(){
 function exportToPDF(){
   const { jsPDF } = window.jspdf; const doc=new jsPDF();
   const data = filteredTasks.length ? filteredTasks : currentExportSet();
-  doc.setFontSize(18); doc.text(`Theatre Task Tracker - ${sheetName(currentView==='parked'?'Parked':currentView==='done'?'Done':'Task List')}`,14,20);
+  doc.setFontSize(18); doc.text(`Theatre To Do List - ${sheetName(currentView==='parked'?'Parked':currentView==='done'?'Done':'Task List')}`,14,20);
   doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleDateString()}`,14,28);
   doc.text(`Total Tasks: ${data.length}`,14,34);
   const tableData=data.map(t=>[t.title,t.type,t.progress,t.priority,t.focus||'N/A',t.assignedTo||'Unassigned',t.deadline?formatDateDisplay(t.deadline):'No deadline',t.createdBy]);
